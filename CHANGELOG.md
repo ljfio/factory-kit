@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `codex.yml`: owner-only `@codex` CI workflow (`openai/codex-action`, API key in the `codex` environment), shipped
+  only when `codex` is enabled; same controls as `claude.yml`, checked by a test. See `docs/ci-agent.md`.
 - Pointer files now import with `@./AGENTS.md` (Gemini documents only `./` and `../` forms). Codex and Gemini paths
   checked against vendor docs; sources in `docs/agents.md`.
 
