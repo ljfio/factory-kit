@@ -1,7 +1,7 @@
 # Agents
 
 The kit is agent-neutral. `agents` in `.factory/config.json` lists which coding agents the project uses (default
-`["claude"]`); `init --agents claude,codex` sets it, `factory.py agent add|remove NAME` changes it later.
+`["claude"]`); `init --agents claude,codex` sets it (an existing config's `agents` is kept when the flag is omitted), `factory.py agent add|remove NAME` changes it later.
 
 ## What each agent gets
 

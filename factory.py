@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """factory-kit: install and update an agent-driven GitHub delivery workflow in any repository.
 
-  factory.py init [--ref REF] [--source URL|PATH] [--project N] [--repo OWNER/NAME]
-                              install the kit into the current repository
+  factory.py init [--ref REF] [--source URL|PATH] [--project N] [--repo OWNER/NAME] [--adopt]
+                              install the kit into the current repository; keeps an existing .factory/config.json,
+                              --adopt replaces existing managed files (older skills) with the kit's
   factory.py update [--ref REF] [--dry-run] [--force]
                               bring the kit files up to date with the latest release
   factory.py agent add|remove NAME
@@ -216,7 +217,7 @@ def apply_block(name, block, dry):
     return action
 
 
-def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
+def sync(kit, ref, commit, version, cfg, manifest, dry, force, first, adopt=False):
     files, block, instr = kit_files(kit, cfg)
     old = manifest.get("files", {})
     new_manifest = {}
@@ -251,8 +252,8 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
         elif local == h:
             done()
         elif kind == "managed":
-            if force or (rec and local == inst):
-                report.append(("updated", rel, ""))
+            if force or (rec and local == inst) or (adopt and not rec):
+                report.append(("updated", rel, "adopted" if adopt and not rec else ""))
                 if not dry:
                     write_file(rel, data, mode)
                 done()
@@ -325,14 +326,15 @@ def cmd_init(a):
         die("run from the root of a git repository")
     if MANIFEST.exists():
         die("already installed; use `update`")
-    repo = a.repo or detect_repo()
+    existing = read_json(CONFIG, {})  # a project that already has a config keeps its values
+    repo = a.repo or existing.get("repo") or detect_repo()
     if not repo:
         die("cannot tell the GitHub repository; pass --repo OWNER/NAME")
     # the owner is the person who steers the agents: --owner, else whoever is signed in to gh, else the repo's account
     repo_account = repo.split("/")[0]
-    owner = a.owner or run("gh", "api", "user", "--jq", ".login", check=False) or repo_account
-    owner_id = int(run("gh", "api", f"users/{owner}", "--jq", ".id"))
-    cfg = {"repo": repo, "owner": owner, "owner_id": owner_id}
+    owner = a.owner or existing.get("owner") or run("gh", "api", "user", "--jq", ".login", check=False) or repo_account
+    owner_id = existing.get("owner_id") if owner == existing.get("owner") and existing.get("owner_id") else \
+        int(run("gh", "api", f"users/{owner}", "--jq", ".id"))
     source = a.source or DEFAULT_SOURCE
     kit, ref, commit, version = fetch_kit(source, a.ref)
     # config first (scaffold), then everything rendered with it
@@ -340,17 +342,21 @@ def cmd_init(a):
     for k, v in (("repo", repo), ("owner", owner), ("owner_id", str(owner_id))):
         cfg_text = cfg_text.replace("{{%s}}" % k, v)
     cfg = json.loads(cfg_text)
+    for k, v in existing.items():  # existing values win over the kit's defaults (one level deep for objects)
+        cfg[k] = {**cfg[k], **v} if isinstance(v, dict) and isinstance(cfg.get(k), dict) else v
+    cfg.update(repo=repo, owner=owner, owner_id=owner_id)
     if a.project:
         cfg["project"] = a.project
-    if repo_account != owner:
+    if repo_account != owner and "project_owner" not in existing:
         cfg["project_owner"] = repo_account  # projects belong to the repo's account (user or organisation)
     meta = json.loads((kit / "kit.json").read_text())
-    cfg["agents"] = agent_names({"agents": [x for x in a.agents.split(",") if x]}, meta)
-    files = {meta["agents"][n]["instructions"] for n in cfg["agents"]}
-    cfg["instructions"] = "AGENTS.md" if len(files) > 1 and "AGENTS.md" in files else sorted(files)[0]
+    if a.agents or "agents" not in existing:
+        cfg["agents"] = agent_names({"agents": [x for x in (a.agents or "claude").split(",") if x]}, meta)
+        files = {meta["agents"][n]["instructions"] for n in cfg["agents"]}
+        cfg["instructions"] = "AGENTS.md" if len(files) > 1 and "AGENTS.md" in files else sorted(files)[0]
     if not a.dry_run:
         write_json(CONFIG, cfg)
-    report = sync(kit, ref, commit, version, cfg, {"source_arg": source}, a.dry_run, False, True)
+    report = sync(kit, ref, commit, version, cfg, {"source_arg": source}, a.dry_run, False, True, a.adopt)
     print(f"factory-kit {version} ({ref} {commit[:7]}) installed from {source}\n")
     print_report(report)
     claude = "claude" in cfg["agents"]
@@ -451,8 +457,11 @@ def main():
             s.add_argument("--project", type=int)
             s.add_argument("--owner", help="GitHub login of the person who steers the agents (default: the user "
                                            "signed in to gh)")
-            s.add_argument("--agents", default="claude",
-                           help="comma-separated agents to install for: claude, codex, gemini, copilot, cursor")
+            s.add_argument("--agents", help="comma-separated agents to install for: claude, codex, gemini, copilot, "
+                                            "cursor (default: those in an existing config, else claude)")
+            s.add_argument("--adopt", action="store_true",
+                           help="take the kit's version of managed files that already exist (e.g. older skills) "
+                                "instead of writing <file>.factory-new")
         else:
             s.add_argument("--force", action="store_true", help="overwrite managed files you changed")
     s = sub.add_parser("agent")

@@ -41,6 +41,10 @@ improvements. The original project is the first adopter, but it must not be name
   conflict (`<file>.factory-new`); managed and edited with the kit unchanged, kept; scaffold changed by the kit,
   `.factory-new`; a managed or scaffold file removed from the kit, or newly excluded, is deleted (and dropped from the manifest) when
   unedited, and kept and reported when edited. New config keys are merged in.
+- `init` keeps an existing `.factory/config.json` (existing values win, the kit's defaults fill gaps, objects such as
+  `labels` merge one level deep; `--repo`, `--owner`, `--project`, `--agents` override). `init --adopt` takes the
+  kit's version of managed files that already exist without a manifest entry (older skills) instead of writing
+  `.factory-new`; scaffolds that exist are still kept.
 - `exclude` in config (path prefixes) skips files. `status` lists missing or edited managed files and pending
   `.factory-new` files. `bootstrap` creates labels and milestones with `gh`.
 - `--source` accepts a git URL or a local path (tests and local development use a path).
@@ -72,14 +76,11 @@ assignee, so `board.py new` gets it from the rendered template.
 
 ## Known issues and rough edges
 
-1. `init` writes a fresh config; it does not merge with an existing `.factory/config.json`.
-2. `init` on a project that already has the files: managed files conflict (`.factory-new`), scaffolds are kept.
-   The adopter deleted its old skills first. A `--adopt` flag that takes the kit's managed files would be cleaner.
-3. The `CLAUDE.md` block duplicates a skills table if the project already has one; the adopter removed its own.
-4. `status` has no verbose mode (`-v` is parsed but unused).
-5. `claude.yml` ships without toolchain setup steps; projects must add `setup-*` steps and `--allowedTools` entries.
-6. Python 3.8+ is assumed; tested on 3.9 (macOS system Python) and 3.12 (CI).
-7. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
+1. The `CLAUDE.md` block duplicates a skills table if the project already has one; the adopter removed its own.
+2. `status` has no verbose mode (`-v` is parsed but unused).
+3. `claude.yml` ships without toolchain setup steps; projects must add `setup-*` steps and `--allowedTools` entries.
+4. Python 3.8+ is assumed; tested on 3.9 (macOS system Python) and 3.12 (CI).
+5. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
    deliberately excluded from `ready`.
 
 ## Done in 0.2.0: agents

@@ -250,6 +250,41 @@ class FactoryTest(unittest.TestCase):
         self.kit_commit("kit/.github/ISSUE_TEMPLATE/verification.md", "\nreal change\n")
         self.assertIn("conflict", self.update())
 
+    def preinstalled_project(self, init_args=()):
+        """A repository with older skills and a config of its own, but no manifest, then `init`."""
+        proj = self.tmp / "proj3"
+        (proj / ".claude/skills/board").mkdir(parents=True)
+        (proj / ".factory").mkdir()
+        sh("git", "init", "-q", "-b", "main", cwd=proj)
+        (proj / ".claude/skills/board/SKILL.md").write_text("old skill\n")
+        (proj / ".factory/config.json").write_text(json.dumps({"areas": ["web"], "project": 7,
+                                                               "labels": {"needs_env": "wait-env"}}))
+        p = subprocess.run([sys.executable, str(ROOT / "factory.py"), "init", "--repo", "acme/widgets", "--source",
+                            str(self.kit), "--ref", "main", *init_args], cwd=proj, capture_output=True, text=True,
+                           env=self.env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return proj
+
+    def test_adopt_takes_managed_files(self):
+        proj = self.preinstalled_project(["--adopt"])
+        skill = proj / ".claude/skills/board/SKILL.md"
+        self.assertEqual(skill.read_bytes(), (ROOT / "kit/.claude/skills/board/SKILL.md").read_bytes())
+        self.assertFalse(skill.with_name("SKILL.md.factory-new").exists())
+        self.assertEqual(list(proj.rglob("*.factory-new")), [])
+
+    def test_without_adopt_an_existing_managed_file_conflicts(self):
+        proj = self.preinstalled_project()
+        self.assertEqual((proj / ".claude/skills/board/SKILL.md").read_text(), "old skill\n")
+        self.assertTrue((proj / ".claude/skills/board/SKILL.md.factory-new").exists())
+
+    def test_init_keeps_existing_config(self):
+        proj = self.preinstalled_project(["--adopt"])
+        cfg = json.loads((proj / ".factory/config.json").read_text())
+        self.assertEqual((cfg["areas"], cfg["project"]), (["web"], 7))
+        self.assertEqual(cfg["labels"]["needs_env"], "wait-env")
+        self.assertIn("env_gated", cfg["labels"])  # the kit's defaults fill the gaps
+        self.assertEqual((cfg["repo"], cfg["owner"]), ("acme/widgets", "dev"))
+
 
 if __name__ == "__main__":
     unittest.main()
