@@ -30,7 +30,9 @@ improvements. The original project is the first adopter, but it must not be name
   for the numeric id, shallow-clones the source at `--ref` (default: highest `vX.Y.Z` tag, else `main`), writes
   `.factory/config.json`, installs every file under `kit/` plus `factory.py` as `.factory/factory.py`, inserts the
   `CLAUDE.md` block between `<!-- factory-kit:begin -->` and `<!-- factory-kit:end -->`, and writes
-  `.factory/manifest.json` (source, ref, version, commit, per-file sha256 and kind).
+  `.factory/manifest.json` (source, ref, version, commit, per-file sha256 and kind; scaffolds also `raw`, the hash of
+  the unrendered kit file, which is what decides "the kit changed this scaffold" so renaming `labels` is not a kit change;
+  manifests from before `raw` was recorded compare rendered hashes once).
 - File kinds come from `kit.json`: **managed** (skills, `board.py`, `factory.py`) are replaced on update when the
   project has not edited them; **scaffold** (everything else under `kit/`) is created once. The manifest hash is the
   hash of what the kit offered, not of the local file, so "project edited it" and "kit changed it" can be told apart.
@@ -70,18 +72,14 @@ assignee, so `board.py new` gets it from the rendered template.
 
 ## Known issues and rough edges
 
-1. **Spurious scaffold conflict when labels are renamed after install.** Scaffolds are rendered with the config at
-   update time, so changing `labels` in config changes the rendered `verification.md` and the next update reports
-   "kit changed this scaffold". Workaround used once: set the manifest hash to the rendered hash and delete the
-   `.factory-new`. A proper fix: record the render inputs, or render with the install-time config.
-2. `init` writes a fresh config; it does not merge with an existing `.factory/config.json`.
-3. `init` on a project that already has the files: managed files conflict (`.factory-new`), scaffolds are kept.
+1. `init` writes a fresh config; it does not merge with an existing `.factory/config.json`.
+2. `init` on a project that already has the files: managed files conflict (`.factory-new`), scaffolds are kept.
    The adopter deleted its old skills first. A `--adopt` flag that takes the kit's managed files would be cleaner.
-4. The `CLAUDE.md` block duplicates a skills table if the project already has one; the adopter removed its own.
-5. `status` has no verbose mode (`-v` is parsed but unused).
-6. `claude.yml` ships without toolchain setup steps; projects must add `setup-*` steps and `--allowedTools` entries.
-7. Python 3.8+ is assumed; tested on 3.9 (macOS system Python) and 3.12 (CI).
-8. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
+3. The `CLAUDE.md` block duplicates a skills table if the project already has one; the adopter removed its own.
+4. `status` has no verbose mode (`-v` is parsed but unused).
+5. `claude.yml` ships without toolchain setup steps; projects must add `setup-*` steps and `--allowedTools` entries.
+6. Python 3.8+ is assumed; tested on 3.9 (macOS system Python) and 3.12 (CI).
+7. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
    deliberately excluded from `ready`.
 
 ## Done in 0.2.0: agents

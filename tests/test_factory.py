@@ -240,6 +240,16 @@ class FactoryTest(unittest.TestCase):
         self.assertIn("modified locally", out)
         self.assertEqual((self.proj / rel).read_text(), "mine\n")
 
+    def test_label_rename_is_not_a_kit_change(self):
+        self.set_config(labels={"needs_env": "wait-env", "env_gated": "gated"})
+        self.kit_commit("kit/.claude/skills/board/SKILL.md", "\nunrelated\n")  # a new kit commit so update runs
+        out = self.update()
+        self.assertNotIn("conflict", out)
+        self.assertEqual(list(self.proj.rglob("*.factory-new")), [])
+        # a real kit change to the same scaffold is still reported
+        self.kit_commit("kit/.github/ISSUE_TEMPLATE/verification.md", "\nreal change\n")
+        self.assertIn("conflict", self.update())
+
 
 if __name__ == "__main__":
     unittest.main()

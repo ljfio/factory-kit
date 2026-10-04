@@ -167,7 +167,7 @@ def kit_files(kit, cfg):
     for rel, src in sorted(sources.items()):
         if rel == meta["claude_md_block"] or any(rel.startswith(x) for x in exclude):
             continue
-        data = src.read_bytes()
+        data = raw = src.read_bytes()
         kind = "managed" if any(rel == m or (m.endswith("/") and rel.startswith(m)) for m in managed) else "scaffold"
         if kind == "scaffold":  # managed files are copied verbatim (factory.py contains the placeholders itself)
             try:
@@ -175,7 +175,7 @@ def kit_files(kit, cfg):
                               lambda m: values[m.group(1)], data.decode()).encode()
             except UnicodeDecodeError:
                 pass
-        out[rel] = (data, kind, 0o755 if rel.endswith(".py") else 0o644)
+        out[rel] = (data, kind, 0o755 if rel.endswith(".py") else 0o644, sha(raw))
     block = (kit / "kit" / meta["instruction_block"]).read_text().strip()
     return out, block, instruction_files(cfg, meta, names)
 
@@ -221,14 +221,16 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
     old = manifest.get("files", {})
     new_manifest = {}
     report = []
-    for rel, (data, kind, mode) in files.items():
+    for rel, (data, kind, mode, raw) in files.items():
         h, p, rec = sha(data), Path(rel), old.get(rel)
         local = sha(p.read_bytes()) if p.exists() else None
         inst = rec["sha"] if rec else None
         keep = {"sha": inst, "kind": kind} if rec else None
+        if keep and "raw" in rec:
+            keep["raw"] = rec["raw"]
 
-        def done(h_=h):
-            new_manifest[rel] = {"sha": h_, "kind": kind}
+        def done(h_=h):  # raw: hash of the unrendered kit file, so a config change is not mistaken for a kit change
+            new_manifest[rel] = {"sha": h_, "kind": kind, **({"raw": raw} if kind == "scaffold" else {})}
 
         def conflict(why):
             report.append(("conflict", rel, why))
@@ -260,10 +262,10 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
             else:
                 conflict("modified locally and changed in the kit" if rec else "exists and was not installed by the kit")
         else:  # scaffold, differs from the kit
-            if rec and h != inst:
+            if rec and (rec["raw"] != raw if "raw" in rec else h != inst):
                 conflict("kit changed this scaffold; merge by hand")
             elif rec:
-                new_manifest[rel] = keep
+                new_manifest[rel] = {**keep, "raw": raw}
             else:
                 report.append(("kept", rel, "scaffold already exists"))
                 done()
