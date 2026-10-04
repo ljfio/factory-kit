@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `init` keeps an existing `.factory/config.json` (merging the kit's defaults for missing keys) and `init --adopt`
+  replaces already-present managed files, such as older skills, instead of writing `.factory-new`.
 - Renaming `labels` (or any other render input) no longer reports the kit as having changed a scaffold: the manifest
   records the hash of the unrendered kit file for scaffolds.
 - `exclude` now also removes an already-installed scaffold when unedited (kept and reported when edited), and a

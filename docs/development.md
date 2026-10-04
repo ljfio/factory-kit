@@ -89,7 +89,7 @@ report a scaffold conflict on the template).
 
 ## 3. The installer (`factory.py`)
 
-- `init [--repo] [--owner] [--project N] [--agents a,b] [--source] [--ref]`: resolves the repo and owner, fetches the
+- `init [--repo] [--owner] [--project N] [--agents a,b] [--adopt] [--source] [--ref]`: resolves the repo and owner, fetches the
   kit (default: highest `vX.Y.Z` tag, else `main`), writes config, installs files, writes `.factory/manifest.json`.
 - `update`: no-op if the commit and agents are unchanged; otherwise per file: replace if unedited, conflict
   (`.factory-new`) if both sides changed, keep scaffolds, delete files the kit removed (when unedited).
