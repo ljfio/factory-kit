@@ -31,6 +31,21 @@ existing `CLAUDE.md` to `AGENTS.md`, move your rules by hand.
 A scaffold that only makes sense for one agent ships only when that agent is enabled. Today that is
 `.github/workflows/claude.yml` for `claude`. CI agents for other providers are planned (see `handoff.md`).
 
+## Copilot cloud agent
+
+Nothing is installed for it (no workflow, no scaffold): GitHub starts it when an issue is assigned to Copilot, so
+`work-package` issues are picked up by assigning them to Copilot rather than by a label or comment trigger. Facts
+below are from GitHub's documentation (October 2026; sources at the end of this file):
+
+- Available on all paid Copilot plans; on Business and Enterprise an administrator must enable the policy, and a
+  repository can opt out. The owner has to confirm both; `doctor` prints them as notes when `copilot` is enabled.
+- It works in an ephemeral environment powered by GitHub Actions and opens a pull request.
+- It reads repository instructions from `AGENTS.md` (any number, anywhere in the repository), or a single root
+  `CLAUDE.md` or `GEMINI.md`, as well as `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md`.
+  The kit's pointer files cover `AGENTS.md`/`CLAUDE.md`. It can use agent skills (directories in the table above).
+- Not verified: how issue assignment is done from the API or `gh`, who may assign, and whether workflows on its pull
+  requests need approval before they run. Tracked in a follow-up issue.
+
 ## Adding an agent to the kit
 
 It is data, not installer code: add an entry to `kit.json` under `agents` with `skills` (directories it reads,
@@ -48,3 +63,7 @@ above and a test. The vendors' docs moved paths during 2026, so re-verify before
 - Gemini CLI imports with `@./file.md`, `@../file.md` or an absolute path, ignores `@` inside code, and stops at depth 5
   ([Memory Import Processor](https://geminicli.com/docs/reference/memport/)). A bare `@AGENTS.md` is not a documented
   form, so pointers use `@./AGENTS.md`.
+- Copilot cloud agent: [About Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent)
+  (assign an issue to Copilot, paid plans, administrator policy, Actions-powered environment, skills) and
+  [Add repository custom instructions](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions)
+  (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`).

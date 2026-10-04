@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Copilot cloud agent setup guide in `docs/agents.md`; `doctor` prints its prerequisites when `copilot` is enabled.
 - `factory.py doctor`: read-only check of gh auth and scope, project, labels, milestones and the `claude`
   environment and secret, with the fix for each failure; exits non-zero when anything is missing.
 - `init` keeps an existing `.factory/config.json` (merging the kit's defaults for missing keys) and `init --adopt`
