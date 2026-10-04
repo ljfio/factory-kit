@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+Fix: managed files (including `factory.py`) are copied verbatim; only scaffolds are templated.
+
 ## 0.1.1
 
 board.py: remove leftover Azure naming.

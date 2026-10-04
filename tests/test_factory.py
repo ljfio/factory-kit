@@ -62,6 +62,9 @@ class FactoryTest(unittest.TestCase):
         m = json.loads((self.proj / ".factory/manifest.json").read_text())
         self.assertEqual(m["files"][".claude/skills/board/SKILL.md"]["kind"], "managed")
 
+    def test_managed_files_are_copied_verbatim(self):
+        self.assertEqual((self.proj / ".factory/factory.py").read_bytes(), (ROOT / "factory.py").read_bytes())
+
     def test_update_replaces_unmodified_managed_file(self):
         self.kit_commit("kit/.claude/skills/board/SKILL.md", "\nnew line\n")
         out = self.update()

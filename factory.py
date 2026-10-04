@@ -126,14 +126,13 @@ def kit_files(kit, cfg):
         if rel == meta["claude_md_block"] or any(rel.startswith(x) for x in exclude):
             continue
         data = src.read_bytes()
-        try:
-            text = data.decode()
-            text = re.sub(r"\{\{(repo|owner|owner_id|label_needs_env|label_env_gated)\}\}",
-                          lambda m: values[m.group(1)], text)
-            data = text.encode()
-        except UnicodeDecodeError:
-            pass
         kind = "managed" if any(rel == m or (m.endswith("/") and rel.startswith(m)) for m in managed) else "scaffold"
+        if kind == "scaffold":  # managed files are copied verbatim (factory.py contains the placeholders itself)
+            try:
+                data = re.sub(r"\{\{(repo|owner|owner_id|label_needs_env|label_env_gated)\}\}",
+                              lambda m: values[m.group(1)], data.decode()).encode()
+            except UnicodeDecodeError:
+                pass
         out[rel] = (data, kind, 0o755 if rel.endswith(".py") else 0o644)
     block = (kit / "kit" / meta["claude_md_block"]).read_text().strip()
     return out, block
