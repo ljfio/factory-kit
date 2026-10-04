@@ -4,7 +4,7 @@ Written for the next session working in this repo. Written at v0.1.2; the agent-
 
 ## What this is and why
 
-The owner (GitHub `ljfio`) built an agent-driven delivery workflow inside one of their own projects: GitHub issues
+The kit's author built an agent-driven delivery workflow inside one of their own projects: GitHub issues
 and a project board are the record of work, Claude skills pick up issues, build on `wp/<id>-<slug>` branches and
 open pull requests, the owner steers by commenting, and an owner-only `@claude` workflow runs Claude Code in
 Actions on their subscription. This repo extracts that into a generic kit so any project can install it and pull

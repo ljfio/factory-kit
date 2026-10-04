@@ -48,7 +48,7 @@ class FactoryTest(unittest.TestCase):
         bin_ = self.tmp / "bin"
         bin_.mkdir()
         gh = bin_ / "gh"
-        gh.write_text("#!/bin/sh\necho 4242\n")
+        gh.write_text('#!/bin/sh\ncase "$*" in "api user --jq .login") echo dev;; *) echo 4242;; esac\n')
         gh.chmod(0o755)
         self.env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}"}
 
@@ -82,7 +82,7 @@ class FactoryTest(unittest.TestCase):
 
     def test_init_renders_and_records(self):
         owner = (self.proj / ".github/CODEOWNERS").read_text()
-        self.assertIn("@acme", owner)
+        self.assertIn("@dev", owner)
         self.assertNotIn("{{", owner)
         wf = (self.proj / ".github/workflows/claude.yml").read_text()
         self.assertIn("github.event.sender.id == 4242", wf)
@@ -90,6 +90,17 @@ class FactoryTest(unittest.TestCase):
         self.assertIn("factory-kit:begin", (self.proj / "CLAUDE.md").read_text())
         m = json.loads((self.proj / ".factory/manifest.json").read_text())
         self.assertEqual(m["files"][".claude/skills/board/SKILL.md"]["kind"], "managed")
+
+    def test_owner_is_the_signed_in_user_not_the_repo_account(self):
+        cfg = json.loads((self.proj / ".factory/config.json").read_text())
+        self.assertEqual((cfg["owner"], cfg["project_owner"]), ("dev", "acme"))
+        self.assertIn("@dev", (self.proj / ".github/CODEOWNERS").read_text())
+
+    def test_owner_flag_overrides(self):
+        proj = self.fresh_project("--owner", "someone")
+        cfg = json.loads((proj / ".factory/config.json").read_text())
+        self.assertEqual(cfg["owner"], "someone")
+        self.assertIn("@someone", (proj / ".github/CODEOWNERS").read_text())
 
     def test_managed_files_are_copied_verbatim(self):
         self.assertEqual((self.proj / ".factory/factory.py").read_bytes(), (ROOT / "factory.py").read_bytes())
