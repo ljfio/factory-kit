@@ -76,3 +76,5 @@ python3 -m unittest discover -s tests
 Release by bumping `VERSION`, adding to `CHANGELOG.md` and tagging `vX.Y.Z`; `update` follows the latest tag.
 
 MIT licensed.
+
+More: [how it works and how to keep developing it](docs/development.md), [agents](docs/agents.md), [customising](docs/customising.md), [CI agent](docs/ci-agent.md).

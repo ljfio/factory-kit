@@ -2,6 +2,8 @@
 
 Written for the next session working in this repo. Written at v0.1.2; the agent-neutral work below landed in 0.2.0 (unreleased until tagged), see `docs/agents.md`.
 
+Full guide to how it works and how to continue: [`development.md`](development.md).
+
 ## What this is and why
 
 The kit's author built an agent-driven delivery workflow inside one of their own projects: GitHub issues
