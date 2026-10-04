@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Renaming `labels` (or any other render input) no longer reports the kit as having changed a scaffold: the manifest
+  records the hash of the unrendered kit file for scaffolds.
 - `exclude` now also removes an already-installed scaffold when unedited (kept and reported when edited), and a
   changed `exclude` triggers an update even when the kit is unchanged.
 - Pointer files now import with `@./AGENTS.md` (Gemini documents only `./` and `../` forms). Codex and Gemini paths

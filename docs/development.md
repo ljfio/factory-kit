@@ -97,7 +97,8 @@ report a scaffold conflict on the template).
 - `status` (missing/edited managed files, pending `.factory-new`), `bootstrap` (labels, milestones), `version`.
 - `kit.json` is the kit's own metadata: which paths are `managed`, the **agent registry**, and which file is the
   block source. The manifest records the hash of what the kit offered, not of the local file; that is how "the
-  project edited it" and "the kit changed it" are told apart.
+  project edited it" and "the kit changed it" are told apart. Scaffolds also record `raw`, the hash of the
+  unrendered kit file, so a config change (for example renamed `labels`) is not seen as a kit change.
 - Skills placement is a minimal cover: agents with one option decide first, so `claude,copilot,cursor` writes only
   `.claude/skills/`.
 
