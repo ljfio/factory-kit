@@ -94,7 +94,7 @@ Compatibility with old installers was tested by hand (old `update` against the n
 
 1. **Dogfood.** Install the kit into this repo (`init --source . --agents claude`), create a project board, and file
    the items below as issues so `work-package` builds them.
-2. **CI agent per provider** (`codex`, `gemini`, `copilot`), same controls as `claude.yml` (sender-id check,
+2. **CI agent per provider** (`codex` and `gemini` are done; `copilot` remains), same controls as `claude.yml` (sender-id check,
    environment-scoped secret, pinned action commit). Codex and Gemini use API keys, not subscription tokens.
 3. **Forge seam**: skills still call `gh` in about 26 places. Route everything through `board.py`, then add GitLab
    and Azure DevOps backends behind it. Contract tests run against fake CLIs.
