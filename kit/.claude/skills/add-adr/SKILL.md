@@ -39,5 +39,5 @@ The ADR directory (`adr_dir` in `.factory/config.json`, default `docs/adr`) hold
 7. **Close the loop on GitHub:** `gh issue edit N --remove-label decision-needed --add-label decided --add-label adr-recorded`, then `gh issue close N -c "**[Claude]** Recorded as ADR NNNN: docs/adr/<file>"` (for an issue already closed, just fix the labels and comment). If follow-up work follows from the decision, create it with `new-work-item`.
 8. Commit: `ADR NNNN: <title>` with `Refs #N`.
 
-Check at the end: `python3 .claude/scripts/board.py adr-pending` should no longer list the issue.
+Check at the end: `python3 .factory/scripts/board.py adr-pending` should no longer list the issue.
 z

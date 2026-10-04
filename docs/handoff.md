@@ -1,6 +1,6 @@
 # Handoff
 
-Written for the next session working in this repo. Everything here was true at v0.1.2.
+Written for the next session working in this repo. Written at v0.1.2; the agent-neutral work below landed in 0.2.0 (unreleased until tagged), see `docs/agents.md`.
 
 ## What this is and why
 
@@ -40,7 +40,7 @@ improvements. The original project is the first adopter, but it must not be name
   `.factory-new` files. `bootstrap` creates labels and milestones with `gh`.
 - `--source` accepts a git URL or a local path (tests and local development use a path).
 
-## `board.py` (installed at `.claude/scripts/board.py`)
+## `board.py` (installed at `.factory/scripts/board.py`)
 
 Reads `.factory/config.json` from two directories above itself (`ROOT = parents[2]`): `repo`, `owner`, `project`,
 `areas`, `waves`, `labels`. Env overrides `FACTORY_REPO`, `FACTORY_OWNER`, `FACTORY_PROJECT`. With no `project`,
@@ -81,35 +81,22 @@ assignee, so `board.py new` gets it from the rendered template.
 8. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
    deliberately excluded from `ready`.
 
-## Next piece of work: other AI coding providers
+## Done in 0.2.0: agents
 
-The owner wants easy adoption of the other major providers on top of this. Research so far was one pass of web
-search (not primary documentation), so **verify every claim below against official docs before building**.
+`agents` and `instructions` config, an agent registry in `kit.json`, skills fanned out per needed directory,
+pointer files, agent-owned scaffolds, `agent add|remove`. Paths verified against vendor docs (see `docs/agents.md`).
+Compatibility with old installers was tested by hand (old `update` against the new kit); the kit keeps the
+`claude_md_block` key and the `kit/.claude/skills` layout for that reason. Do not rename them without a plan.
 
-- `SKILL.md` is reportedly an open standard (agentskills.io) read by Claude Code, Codex CLI, Gemini CLI, Cursor,
-  Copilot (VS Code) and others, so the nine skills may work unchanged if placed where each tool looks.
-- `AGENTS.md` is the shared instruction file (Codex, Cursor, Copilot coding agent and others; Gemini CLI via a
-  configurable context file name). This kit currently uses `CLAUDE.md` (and the first adopter also has `GEMINI.md`).
-- CI agents: `openai/codex-action` (label-triggered review, triage and issue-fix; API key), a Gemini CLI GitHub
-  Action (not confirmed), Copilot's coding agent (assigned to an issue from GitHub). Codex and Gemini CI normally
-  bill an API key rather than a subscription OAuth token, so the cost model differs from `claude.yml`.
+## Next piece of work
 
-Proposed shape for v0.2 (owner has not approved it; ask which providers first and whether to start with skills plus
-`AGENTS.md` only):
-
-1. `providers` in `.factory/config.json` (`["claude"]` default) drives what `init` and `update` install.
-2. `AGENTS.md` as the single instruction source; `CLAUDE.md` and `GEMINI.md` become one-line pointers; the managed
-   block lives once.
-3. Skills installed once; `factory.py` links or copies them to each provider's skills path (verify the paths).
-4. One owner-only workflow scaffold per provider with the same controls as `claude.yml` (sender-id check,
-   environment-scoped secret, pinned action commit).
-5. Tests per provider: files land in the right place, update preserves edits, nothing templated in managed files.
-
-Sources from the first pass:
-- https://codex.danielvaughan.com/2026/05/05/agent-skills-open-standard-portable-skills-codex-cli-cross-agent/
-- https://mcp.directory/blog/cross-agent-skills-cursor-codex-cline-antigravity-gemini-mastra-portability
-- https://blog.buildbetter.ai/agents-md-vs-cursorrules-vs-claude-skills-2026-comparison/
-- https://developers.openai.com/es-419/docs/github-action
+1. **Dogfood.** Install the kit into this repo (`init --source . --agents claude`), create a project board, and file
+   the items below as issues so `work-package` builds them.
+2. **CI agent per provider** (`codex`, `gemini`, `copilot`), same controls as `claude.yml` (sender-id check,
+   environment-scoped secret, pinned action commit). Codex and Gemini use API keys, not subscription tokens.
+3. **Forge seam**: skills still call `gh` in about 26 places. Route everything through `board.py`, then add GitLab
+   and Azure DevOps backends behind it. Contract tests run against fake CLIs.
+4. The `**[Claude]**` comment marker is still Claude-named; make it configurable (`marker`).
 
 ## Other candidates
 

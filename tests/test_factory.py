@@ -22,11 +22,26 @@ class FactoryTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.kit = self.tmp / "kit"
         sh("git", "clone", "-q", str(ROOT), str(self.kit), cwd=self.tmp)
+        sh("git", "checkout", "-q", "-B", "main", cwd=self.kit)  # whatever branch (or detached HEAD) is checked out here
+        self.overlay_working_tree()
         self.proj = self.tmp / "proj"
         self.proj.mkdir()
         sh("git", "init", "-q", "-b", "main", cwd=self.proj)
         self.fake_gh()
         self.factory("init", "--repo", "acme/widgets", "--source", str(self.kit), "--ref", "main")
+
+    def overlay_working_tree(self):
+        """Test the files on disk, committed or not, so nothing has to be committed before running the tests."""
+        files = sh("git", "ls-files", "-co", "--exclude-standard", cwd=ROOT).splitlines()
+        for tracked in sh("git", "ls-files", cwd=self.kit).splitlines():
+            if tracked not in files:
+                (self.kit / tracked).unlink()
+        for rel in files:
+            if (ROOT / rel).is_file():
+                (self.kit / rel).parent.mkdir(parents=True, exist_ok=True)
+                (self.kit / rel).write_bytes((ROOT / rel).read_bytes())
+        sh("git", "add", "-A", cwd=self.kit)
+        sh(*GIT, "commit", "-qm", "working tree", "--allow-empty", cwd=self.kit)
 
     def fake_gh(self):
         """init asks gh for the owner id; answer without the network."""
@@ -37,11 +52,25 @@ class FactoryTest(unittest.TestCase):
         gh.chmod(0o755)
         self.env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}"}
 
+    def fresh_project(self, *init_args):
+        """A second project initialised with extra init arguments (agents)."""
+        proj = self.tmp / "proj2"
+        proj.mkdir()
+        sh("git", "init", "-q", "-b", "main", cwd=proj)
+        p = subprocess.run([sys.executable, str(ROOT / "factory.py"), "init", "--repo", "acme/widgets", "--source",
+                            str(self.kit), "--ref", "main", *init_args], cwd=proj, capture_output=True, text=True,
+                           env=self.env)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return proj
+
     def factory(self, *args):
         p = subprocess.run([sys.executable, str(ROOT / "factory.py"), *args], cwd=self.proj,
                            capture_output=True, text=True, env=self.env)
         self.assertEqual(p.returncode, 0, p.stderr)
         return p.stdout
+
+    def agent(self, *args):
+        return self.factory("agent", *args, "--source", str(self.kit), "--ref", "main")
 
     def update(self, *args):
         return self.factory("update", "--source", str(self.kit), "--ref", "main", *args)
@@ -107,9 +136,72 @@ class FactoryTest(unittest.TestCase):
         self.assertFalse((self.proj / ".claude/skills/run-parallel/SKILL.md").exists())
 
     def test_board_reads_config(self):
-        out = subprocess.run([sys.executable, ".claude/scripts/board.py", "repo"], cwd=self.proj,
+        out = subprocess.run([sys.executable, ".factory/scripts/board.py", "repo"], cwd=self.proj,
                              capture_output=True, text=True).stdout.strip()
         self.assertEqual(out, "acme/widgets")
+
+
+    def test_default_install_is_claude_only(self):
+        c = json.loads((self.proj / ".factory/config.json").read_text())
+        self.assertEqual(c["agents"], ["claude"])
+        self.assertTrue((self.proj / ".claude/skills/board/SKILL.md").exists())
+        self.assertFalse((self.proj / ".agents").exists())
+        self.assertTrue((self.proj / ".github/workflows/claude.yml").exists())
+        self.assertFalse((self.proj / "AGENTS.md").exists())
+
+    def test_codex_only_gets_agents_skills_and_no_claude_files(self):
+        p = self.fresh_project("--agents", "codex")
+        self.assertTrue((p / ".agents/skills/board/SKILL.md").exists())
+        self.assertFalse((p / ".claude").exists())
+        self.assertFalse((p / ".github/workflows/claude.yml").exists())
+        self.assertIn("factory-kit:begin", (p / "AGENTS.md").read_text())
+        self.assertFalse((p / "CLAUDE.md").exists())
+        self.assertTrue((p / ".factory/scripts/board.py").exists())
+
+    def test_skills_are_shared_and_instructions_point_at_one_file(self):
+        p = self.fresh_project("--agents", "claude,codex,gemini,copilot,cursor")
+        self.assertEqual(json.loads((p / ".factory/config.json").read_text())["instructions"], "AGENTS.md")
+        self.assertTrue((p / ".claude/skills/board/SKILL.md").exists())
+        self.assertTrue((p / ".agents/skills/board/SKILL.md").exists())  # codex and gemini need it; copilot and cursor reuse
+        self.assertIn("factory-kit:begin -->\n## Delivery workflow", (p / "AGENTS.md").read_text())
+        for pointer in ("CLAUDE.md", "GEMINI.md"):
+            text = (p / pointer).read_text()
+            self.assertIn("@AGENTS.md", text)
+            self.assertNotIn("Delivery workflow", text)
+
+    def test_copilot_and_cursor_reuse_the_claude_skills(self):
+        p = self.fresh_project("--agents", "claude,copilot,cursor")
+        self.assertTrue((p / ".claude/skills/board/SKILL.md").exists())
+        self.assertFalse((p / ".agents").exists())
+
+    def test_unknown_agent_is_refused(self):
+        proj = self.tmp / "proj3"
+        proj.mkdir()
+        sh("git", "init", "-q", "-b", "main", cwd=proj)
+        p = subprocess.run([sys.executable, str(ROOT / "factory.py"), "init", "--repo", "a/b", "--source", str(self.kit),
+                            "--ref", "main", "--agents", "nope"], cwd=proj, capture_output=True, text=True, env=self.env)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("unknown agent", p.stderr)
+
+    def test_agent_add_and_remove(self):
+        out = self.agent("add", "codex")
+        self.assertIn(".agents/skills/board/SKILL.md", out)
+        self.assertTrue((self.proj / ".agents/skills/board/SKILL.md").exists())
+        self.assertIn("codex", json.loads((self.proj / ".factory/config.json").read_text())["agents"])
+        self.agent("remove", "codex")
+        self.assertFalse((self.proj / ".agents/skills/board/SKILL.md").exists())
+        self.assertTrue((self.proj / ".claude/skills/board/SKILL.md").exists())
+
+    def test_agent_remove_keeps_edited_skill(self):
+        self.agent("add", "codex")
+        f = self.proj / ".agents/skills/board/SKILL.md"
+        f.write_text(f.read_text() + "mine\n")
+        self.agent("remove", "codex")
+        self.assertIn("mine", f.read_text())
+
+    def test_skills_use_the_neutral_helper_path(self):
+        for f in (self.proj / ".claude/skills").rglob("SKILL.md"):
+            self.assertNotIn(".claude/scripts", f.read_text())
 
 
 if __name__ == "__main__":

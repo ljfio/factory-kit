@@ -11,10 +11,10 @@ user-facing description.
 | Path | What |
 |---|---|
 | `factory.py` | Installer and updater (stdlib Python 3.8+, plus `git` and `gh`). Copied into projects as `.factory/factory.py` |
-| `kit.json` | Which kit paths are `managed`, and which file holds the `CLAUDE.md` block |
+| `kit.json` | Which kit paths are `managed`, the agent registry, and which file holds the instruction block |
 | `kit/` | The payload, laid out as it lands in a project (`.claude/`, `.github/`, `.factory/`) |
 | `tests/test_factory.py` | Installer tests; use a fake `gh` and clone this repo as the kit source |
-| `docs/` | `customising.md`, `ci-agent.md`, `handoff.md` |
+| `docs/` | `customising.md`, `agents.md`, `ci-agent.md`, `handoff.md` |
 | `VERSION`, `CHANGELOG.md` | Release metadata; `update` follows the latest `vX.Y.Z` tag |
 
 ## Rules
@@ -36,11 +36,11 @@ user-facing description.
 
 ```bash
 python3 -m unittest discover -s tests        # needs git only; CI runs the same
-python3 -m py_compile factory.py kit/.claude/scripts/board.py
+python3 -m py_compile factory.py kit/.factory/scripts/board.py
 ```
 
 Also install into a scratch git repo (`python3 factory.py init --repo owner/name --source . --ref main` with a
-fake or real `gh`) and run `update` after a kit change. Tests clone `HEAD`, so **commit before running them**.
+fake or real `gh`) and run `update` after a kit change. The tests overlay the working tree onto a clone, so uncommitted changes are tested.
 
 ## Release
 

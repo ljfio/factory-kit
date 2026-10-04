@@ -18,4 +18,4 @@ jobs:
           python-version: "3.12"
       - run: python3 -m unittest discover -s tests -v
       - name: Kit scripts compile
-        run: python3 -m py_compile factory.py kit/.claude/scripts/board.py
+        run: python3 -m py_compile factory.py kit/.factory/scripts/board.py

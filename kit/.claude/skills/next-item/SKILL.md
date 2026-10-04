@@ -3,7 +3,7 @@ name: next-item
 description: Pick the next work package or follow-up to build. Use when asked to "pick up the next item", "what should I work on", or at the start of an unplanned session. Recommends one item (or a safe parallel set) and can hand off to work-package.
 ---
 
-1. Run `python3 .claude/scripts/board.py ready`. If `board.py board` shows something **In progress** that has no active session (a `wp/*` branch exists, nobody working), offer `continue-work` first: finishing beats starting.
+1. Run `python3 .factory/scripts/board.py ready`. If `board.py board` shows something **In progress** that has no active session (a `wp/*` branch exists, nobody working), offer `continue-work` first: finishing beats starting.
 2. For the top candidates read the issue (`gh issue view N`) and check:
    - dependencies are met (`board.py deps N`; closed or `offline-done`),
    - a **decision** that affects it is open (`gh issue list --label decision-needed --search "#N"` and the issue's own text). If the default in that decision is safe (the rules in CLAUDE.md hold) the item can go ahead on the default and the decision stays open; if not, say it is blocked on that decision.

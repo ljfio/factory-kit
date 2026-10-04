@@ -8,12 +8,12 @@ comments. Install it into a project with one command and pull updates from here 
 
 | Piece | Where it lands in your project | What it does |
 |---|---|---|
-| Skills | `.claude/skills/` | `board`, `next-item`, `work-package`, `continue-work`, `review-decisions`, `raise-decision`, `add-adr`, `new-work-item`, `run-parallel` |
-| Board helper | `.claude/scripts/board.py` | Queries and updates issues and the project board (ready, status, inbox, deps, create-from-template) |
+| Skills | `.claude/skills/` and/or `.agents/skills/`, per [agent](docs/agents.md) | `board`, `next-item`, `work-package`, `continue-work`, `review-decisions`, `raise-decision`, `add-adr`, `new-work-item`, `run-parallel` |
+| Board helper | `.factory/scripts/board.py` | Queries and updates issues and the project board (ready, status, inbox, deps, create-from-template) |
 | Issue and PR templates | `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md` | One template per kind of work, used by the web form and by `board.py new` |
 | CI agent | `.github/workflows/claude.yml` | `@claude` in an issue or PR comment runs Claude Code in Actions on your subscription, owner only |
 | Review guard | `.github/CODEOWNERS` | Workflows, skills and `CLAUDE.md` need the owner's review |
-| Workflow summary | a marked block in `CLAUDE.md` | Tells agents how the loop works; replaced on update |
+| Workflow summary | a marked block in `AGENTS.md` or `CLAUDE.md` | Tells agents how the loop works; replaced on update |
 | Config | `.factory/config.json` | Repo, owner, project number, areas, waves, hotspots, labels |
 
 The loop: `board` shows the state, `next-item` picks, `work-package <issue>` claims, branches, builds, runs your
