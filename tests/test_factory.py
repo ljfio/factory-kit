@@ -22,6 +22,7 @@ class FactoryTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.kit = self.tmp / "kit"
         sh("git", "clone", "-q", str(ROOT), str(self.kit), cwd=self.tmp)
+        sh("git", "checkout", "-q", "-B", "main", cwd=self.kit)  # whatever branch (or detached HEAD) is checked out here
         self.overlay_working_tree()
         self.proj = self.tmp / "proj"
         self.proj.mkdir()
