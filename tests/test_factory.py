@@ -353,6 +353,13 @@ sys.exit(1)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("gh auth login", p.stdout)
 
+    def test_doctor_mentions_copilot_prerequisites_when_enabled(self):
+        p = self.doctor(self.healthy(), project=3, waves=["v1"], agents=["claude", "copilot"])
+        self.assertIn("Copilot cloud agent prerequisites", p.stdout)
+        self.assertIn("administrator must enable", p.stdout)
+        p = self.doctor(self.healthy(), project=3, waves=["v1"], agents=["claude"])
+        self.assertNotIn("Copilot", p.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

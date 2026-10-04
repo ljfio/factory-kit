@@ -50,7 +50,8 @@ improvements. The original project is the first adopter, but it must not be name
   `doctor` is read-only: gh signed in with the `project` scope, repository reachable, project exists and is linked to
   the repository, labels and milestones exist, and (claude enabled) the `claude` environment and its
   `CLAUDE_CODE_OAUTH_TOKEN` secret. Each failure prints the command that fixes it; exit 1 if any check fails. The
-  tests run it against a fake `gh` that answers by argument prefix.
+  tests run it against a fake `gh` that answers by argument prefix. With `copilot` enabled it also prints the Copilot
+  cloud agent prerequisites as notes (they cannot be checked from here).
 - `--source` accepts a git URL or a local path (tests and local development use a path).
 
 ## `board.py` (installed at `.factory/scripts/board.py`)

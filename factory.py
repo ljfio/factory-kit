@@ -511,9 +511,21 @@ def doctor_checks(cfg):
     return checks
 
 
+COPILOT_NOTES = [
+    "Copilot cloud agent is not set up by a workflow: assign a `work-package` issue to Copilot on GitHub.",
+    "It needs a paid Copilot plan; on Business or Enterprise an administrator must enable the cloud agent policy, "
+    "and the repository must not have opted out.",
+    "It reads AGENTS.md (or CLAUDE.md / GEMINI.md) and the skills directories; see docs/agents.md in the kit.",
+]
+
+
 def cmd_doctor(_):
     manifest, cfg = installed()
     checks = doctor_checks(cfg)
+    if "copilot" in (cfg.get("agents") or []):  # prerequisites only the owner can confirm, so notes, not checks
+        print("  Copilot cloud agent prerequisites (cannot be checked from here):")
+        for n in COPILOT_NOTES:
+            print(f"    - {n}")
     for name, ok, detail, fix in checks:
         print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f"  ({detail})" if detail and not ok else ""))
         if not ok and fix:
