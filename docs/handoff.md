@@ -1,0 +1,127 @@
+# Handoff
+
+Written for the next session working in this repo. Everything here was true at v0.1.2.
+
+## What this is and why
+
+The owner (GitHub `ljfio`) built an agent-driven delivery workflow inside one of their own projects: GitHub issues
+and a project board are the record of work, Claude skills pick up issues, build on `wp/<id>-<slug>` branches and
+open pull requests, the owner steers by commenting, and an owner-only `@claude` workflow runs Claude Code in
+Actions on their subscription. This repo extracts that into a generic kit so any project can install it and pull
+improvements. The original project is the first adopter, but it must not be named in this repo.
+
+## State at v0.1.2
+
+- Public repo `ljfio/factory-kit`, MIT, `main` plus tags `v0.1.1` and `v0.1.2`. CI (`.github/workflows/ci.yml`)
+  runs the unit tests and `py_compile`; it was green.
+- History was rewritten once on request (single clean commit, project name removed, old `v0.1.0` tag deleted, then a
+  normal commit for 0.1.2). Anyone who cloned before that must re-clone.
+- The first adopter installed v0.1.2 from the GitHub tag and has the kit's workflow running locally against its real
+  project board (`board.py repo|ready|board` verified). Its adoption pull request is open and unmerged.
+- Not verified: the `@claude` CI workflow has never run on GitHub (it needs to be on the default branch of a project
+  with the `claude` environment and `CLAUDE_CODE_OAUTH_TOKEN` set); a full `work-package` cycle using the kit's
+  skills in a fresh session; `factory.py bootstrap` (labels and milestones) has not been run against GitHub.
+
+## How the installer works (`factory.py`)
+
+- `init`: needs a git repo, `gh`. Resolves `owner/name` (from `--repo` or `gh repo view`), asks `gh api users/<owner>`
+  for the numeric id, shallow-clones the source at `--ref` (default: highest `vX.Y.Z` tag, else `main`), writes
+  `.factory/config.json`, installs every file under `kit/` plus `factory.py` as `.factory/factory.py`, inserts the
+  `CLAUDE.md` block between `<!-- factory-kit:begin -->` and `<!-- factory-kit:end -->`, and writes
+  `.factory/manifest.json` (source, ref, version, commit, per-file sha256 and kind).
+- File kinds come from `kit.json`: **managed** (skills, `board.py`, `factory.py`) are replaced on update when the
+  project has not edited them; **scaffold** (everything else under `kit/`) is created once. The manifest hash is the
+  hash of what the kit offered, not of the local file, so "project edited it" and "kit changed it" can be told apart.
+- `update`: no-op when the commit is unchanged. Per file: missing locally and in manifest, deleted by the project
+  and skipped unless `--force`; managed and unedited, replaced; managed and edited with the kit also changed,
+  conflict (`<file>.factory-new`); managed and edited with the kit unchanged, kept; scaffold changed by the kit,
+  `.factory-new`; a managed file removed from the kit is deleted when unedited. New config keys are merged in.
+- `exclude` in config (path prefixes) skips files. `status` lists missing or edited managed files and pending
+  `.factory-new` files. `bootstrap` creates labels and milestones with `gh`.
+- `--source` accepts a git URL or a local path (tests and local development use a path).
+
+## `board.py` (installed at `.claude/scripts/board.py`)
+
+Reads `.factory/config.json` from two directories above itself (`ROOT = parents[2]`): `repo`, `owner`, `project`,
+`areas`, `waves`, `labels`. Env overrides `FACTORY_REPO`, `FACTORY_OWNER`, `FACTORY_PROJECT`. With no `project`,
+status changes print a notice and do nothing. Commands: `ready`, `board`, `decisions`, `inbox`, `adr-pending`,
+`deps`, `status`, `sub`, `template`, `new`, `repo`, `project-url`. `inbox` relies on every Claude comment starting
+with `**[Claude]**` (Claude and the owner post as one account). The issue templates use `{{owner}}` for the
+assignee, so `board.py new` gets it from the rendered template.
+
+## Decisions already made (do not relitigate without the owner)
+
+- Generic skills plus per-project config, not per-project forks of the skills.
+- The pull-request flow is the default (agents open PRs, the owner merges); local merging is only a fallback in
+  `work-package` and `run-parallel` when there is no remote.
+- Labels for "needs the real environment" are configurable (`labels.env_gated`, `labels.needs_env`, defaults
+  `env-gated` and `needs-env`); skills refer to them generically.
+- Issue templates, PR template, `claude.yml` and CODEOWNERS are scaffolds (the project owns them after install).
+- CI agent safety model: job-level check on the immutable sender id, environment-scoped OAuth secret limited to the
+  default branch, action pinned to a commit, `issue_comment` only, merge/api/secret commands disallowed. See
+  `docs/ci-agent.md`.
+- MIT licence, name `factory-kit`.
+- No remote piping: an attempt to run `curl ... | python3 - init` was blocked by the permission classifier in the
+  session, so installs in agent sessions use a local checkout (`python3 /path/to/factory.py init --source <url>`).
+  The README still documents the one-liner for humans. Do not try to work around that block.
+
+## Known issues and rough edges
+
+1. **Spurious scaffold conflict when labels are renamed after install.** Scaffolds are rendered with the config at
+   update time, so changing `labels` in config changes the rendered `verification.md` and the next update reports
+   "kit changed this scaffold". Workaround used once: set the manifest hash to the rendered hash and delete the
+   `.factory-new`. A proper fix: record the render inputs, or render with the install-time config.
+2. `init` writes a fresh config; it does not merge with an existing `.factory/config.json`.
+3. `init` on a project that already has the files: managed files conflict (`.factory-new`), scaffolds are kept.
+   The adopter deleted its old skills first. A `--adopt` flag that takes the kit's managed files would be cleaner.
+4. The `CLAUDE.md` block duplicates a skills table if the project already has one; the adopter removed its own.
+5. `status` has no verbose mode (`-v` is parsed but unused).
+6. `claude.yml` ships without toolchain setup steps; projects must add `setup-*` steps and `--allowedTools` entries.
+7. Python 3.8+ is assumed; tested on 3.9 (macOS system Python) and 3.12 (CI).
+8. `board.py` classifies only issues labelled `work-package` or `follow-up`; epics, decisions and owner actions are
+   deliberately excluded from `ready`.
+
+## Next piece of work: other AI coding providers
+
+The owner wants easy adoption of the other major providers on top of this. Research so far was one pass of web
+search (not primary documentation), so **verify every claim below against official docs before building**.
+
+- `SKILL.md` is reportedly an open standard (agentskills.io) read by Claude Code, Codex CLI, Gemini CLI, Cursor,
+  Copilot (VS Code) and others, so the nine skills may work unchanged if placed where each tool looks.
+- `AGENTS.md` is the shared instruction file (Codex, Cursor, Copilot coding agent and others; Gemini CLI via a
+  configurable context file name). This kit currently uses `CLAUDE.md` (and the first adopter also has `GEMINI.md`).
+- CI agents: `openai/codex-action` (label-triggered review, triage and issue-fix; API key), a Gemini CLI GitHub
+  Action (not confirmed), Copilot's coding agent (assigned to an issue from GitHub). Codex and Gemini CI normally
+  bill an API key rather than a subscription OAuth token, so the cost model differs from `claude.yml`.
+
+Proposed shape for v0.2 (owner has not approved it; ask which providers first and whether to start with skills plus
+`AGENTS.md` only):
+
+1. `providers` in `.factory/config.json` (`["claude"]` default) drives what `init` and `update` install.
+2. `AGENTS.md` as the single instruction source; `CLAUDE.md` and `GEMINI.md` become one-line pointers; the managed
+   block lives once.
+3. Skills installed once; `factory.py` links or copies them to each provider's skills path (verify the paths).
+4. One owner-only workflow scaffold per provider with the same controls as `claude.yml` (sender-id check,
+   environment-scoped secret, pinned action commit).
+5. Tests per provider: files land in the right place, update preserves edits, nothing templated in managed files.
+
+Sources from the first pass:
+- https://codex.danielvaughan.com/2026/05/05/agent-skills-open-standard-portable-skills-codex-cli-cross-agent/
+- https://mcp.directory/blog/cross-agent-skills-cursor-codex-cline-antigravity-gemini-mastra-portability
+- https://blog.buildbetter.ai/agents-md-vs-cursorrules-vs-claude-skills-2026-comparison/
+- https://developers.openai.com/es-419/docs/github-action
+
+## Other candidates
+
+- Fix known issues 1 to 3.
+- A `factory.py doctor` that checks `gh` auth and the `project` scope, the `claude` environment and secret, and
+  labels, and says what is missing.
+- A `factory.py remove` that deletes managed files using the manifest.
+- Move more skill detail into config where a second project would need it.
+
+## Working here
+
+Read `CLAUDE.md` for the rules. Tests clone `HEAD`, so commit before running them. The owner's account id and login
+are inputs to `init` (via `gh`), never hard-coded in the kit. Owner preferences seen so far: concise reports, pull
+requests reviewed by the owner before anything merges, nothing merged or released without being asked, and every
+comment Claude posts to an issue starts with `**[Claude]**`.
