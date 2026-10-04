@@ -271,9 +271,9 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
         if rel in files:
             continue
         p = Path(rel)
-        if rec["kind"] == "managed" and p.exists():
+        if p.exists():  # managed or scaffold: removed when unedited, kept (and reported) when edited
             if sha(p.read_bytes()) == rec["sha"]:
-                report.append(("removed", rel, "no longer in the kit"))
+                report.append(("removed", rel, "no longer in the kit or excluded"))
                 if not dry:
                     p.unlink()
                     for d in p.parents:  # leave no empty directories behind
@@ -281,14 +281,14 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
                             break
                         d.rmdir()
                 continue
-            report.append(("kept", rel, "no longer in the kit but modified locally"))
-        new_manifest[rel] = rec
+            report.append(("kept", rel, "no longer in the kit or excluded, but modified locally"))
+            new_manifest[rel] = rec
     canonical = next(f for f, full in instr.items() if full)
     for name, full in instr.items():
         report.append(("block", name, apply_block(name, block if full else pointer_block(canonical), dry)))
     if not dry:
         write_json(MANIFEST, {"source": manifest.get("source_arg"), "ref": ref, "version": version, "commit": commit,
-                              "agents": cfg.get("agents") or ["claude"],
+                              "agents": cfg.get("agents") or ["claude"], "exclude": cfg.get("exclude", []),
                               "files": dict(sorted(new_manifest.items()))})
     return report
 
@@ -374,7 +374,8 @@ def cmd_update(a):
     manifest, cfg = installed()
     source = a.source or manifest.get("source") or DEFAULT_SOURCE
     kit, ref, commit, version = fetch_kit(source, a.ref)
-    if commit == manifest.get("commit") and not a.force and manifest.get("agents") == (cfg.get("agents") or ["claude"]):
+    if commit == manifest.get("commit") and not a.force and manifest.get("agents") == (cfg.get("agents") or ["claude"]) \
+            and manifest.get("exclude", []) == cfg.get("exclude", []):
         print(f"already at {version} ({commit[:7]})")
         return
     manifest["source_arg"] = source
