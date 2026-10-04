@@ -81,7 +81,7 @@ no `project` set, status changes print a notice and do nothing. It only classifi
 | `areas`, `waves`, `hotspots` | Area labels, ordered milestones, files that make parallel work collide |
 | `notes` | Project hints the skills read |
 | `labels` | `env_gated`, `needs_env` label names |
-| `exclude` | Path prefixes the installer skips |
+| `exclude` | Path prefixes the installer skips; an installed file that becomes excluded is removed when unedited, kept and reported when edited |
 | `agents`, `instructions` | Enabled agents and the one instruction file that holds the block |
 
 Rule: a new key needs a safe default **in code**, and should not be added to the template (an older installer would

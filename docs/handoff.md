@@ -34,10 +34,11 @@ improvements. The original project is the first adopter, but it must not be name
 - File kinds come from `kit.json`: **managed** (skills, `board.py`, `factory.py`) are replaced on update when the
   project has not edited them; **scaffold** (everything else under `kit/`) is created once. The manifest hash is the
   hash of what the kit offered, not of the local file, so "project edited it" and "kit changed it" can be told apart.
-- `update`: no-op when the commit is unchanged. Per file: missing locally and in manifest, deleted by the project
+- `update`: no-op when the commit, the agents and `exclude` are unchanged (the manifest records the last two). Per file: missing locally and in manifest, deleted by the project
   and skipped unless `--force`; managed and unedited, replaced; managed and edited with the kit also changed,
   conflict (`<file>.factory-new`); managed and edited with the kit unchanged, kept; scaffold changed by the kit,
-  `.factory-new`; a managed file removed from the kit is deleted when unedited. New config keys are merged in.
+  `.factory-new`; a managed or scaffold file removed from the kit, or newly excluded, is deleted (and dropped from the manifest) when
+  unedited, and kept and reported when edited. New config keys are merged in.
 - `exclude` in config (path prefixes) skips files. `status` lists missing or edited managed files and pending
   `.factory-new` files. `bootstrap` creates labels and milestones with `gh`.
 - `--source` accepts a git URL or a local path (tests and local development use a path).

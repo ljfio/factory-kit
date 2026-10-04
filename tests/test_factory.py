@@ -214,6 +214,32 @@ class FactoryTest(unittest.TestCase):
         for f in (self.proj / ".claude/skills").rglob("SKILL.md"):
             self.assertNotIn(".claude/scripts", f.read_text())
 
+    def set_config(self, **kv):
+        cfg = self.proj / ".factory/config.json"
+        c = json.loads(cfg.read_text())
+        c.update(kv)
+        cfg.write_text(json.dumps(c, indent=2))
+
+    def manifest(self):
+        return json.loads((self.proj / ".factory/manifest.json").read_text())
+
+    def test_exclude_removes_unedited_scaffold(self):
+        rel = ".github/ISSUE_TEMPLATE/verification.md"
+        self.assertTrue((self.proj / rel).exists())
+        self.set_config(exclude=[rel])
+        out = self.update()  # the kit did not change: the exclude alone must trigger the sync
+        self.assertIn("removed", out)
+        self.assertFalse((self.proj / rel).exists())
+        self.assertNotIn(rel, self.manifest()["files"])
+
+    def test_exclude_keeps_edited_scaffold(self):
+        rel = ".github/ISSUE_TEMPLATE/verification.md"
+        (self.proj / rel).write_text("mine\n")
+        self.set_config(exclude=[rel])
+        out = self.update()
+        self.assertIn("modified locally", out)
+        self.assertEqual((self.proj / rel).read_text(), "mine\n")
+
 
 if __name__ == "__main__":
     unittest.main()
