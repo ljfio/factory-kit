@@ -29,7 +29,8 @@ existing `CLAUDE.md` to `AGENTS.md`, move your rules by hand.
 ## Agent-owned files
 
 A scaffold that only makes sense for one agent ships only when that agent is enabled. Today that is
-`.github/workflows/claude.yml` for `claude`. CI agents for other providers are planned (see `handoff.md`).
+`.github/workflows/claude.yml` for `claude` and `.github/workflows/codex.yml` for `codex` (both described in
+`ci-agent.md`; a test checks they keep the same owner-only controls, CLAUDE.md rule 8). Gemini is next (see `handoff.md`).
 
 ## Adding an agent to the kit
 

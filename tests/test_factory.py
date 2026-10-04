@@ -160,6 +160,24 @@ class FactoryTest(unittest.TestCase):
         self.assertTrue((self.proj / ".github/workflows/claude.yml").exists())
         self.assertFalse((self.proj / "AGENTS.md").exists())
 
+    def test_codex_owns_its_workflow(self):
+        self.assertFalse((self.proj / ".github/workflows/codex.yml").exists())
+        p = self.fresh_project("--agents", "codex")
+        self.assertTrue((p / ".github/workflows/codex.yml").exists())
+        self.assertFalse((p / ".github/workflows/claude.yml").exists())
+
+    def test_ci_workflows_keep_owner_controls(self):
+        for name, env, secret in (("claude", "claude", "CLAUDE_CODE_OAUTH_TOKEN"), ("codex", "codex", "OPENAI_API_KEY")):
+            wf = (ROOT / f"kit/.github/workflows/{name}.yml").read_text()
+            self.assertIn("github.event.sender.id == {{owner_id}}", wf, name)
+            self.assertIn(f"environment: {env}", wf, name)
+            self.assertIn("${{ secrets." + secret + " }}", wf, name)
+            self.assertIn("issue_comment:", wf, name)
+            self.assertNotIn("\n  pull_request", wf, name)  # no pull_request* trigger (comments may mention them)
+            for line in wf.splitlines():
+                if line.strip().startswith("- uses:") or line.strip().startswith("uses:"):
+                    self.assertRegex(line, r"@[0-9a-f]{40}\b|actions/checkout@v\d", f"{name}: pin {line.strip()}")
+
     def test_codex_only_gets_agents_skills_and_no_claude_files(self):
         p = self.fresh_project("--agents", "codex")
         self.assertTrue((p / ".agents/skills/board/SKILL.md").exists())

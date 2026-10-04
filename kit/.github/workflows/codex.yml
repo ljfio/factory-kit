@@ -1,0 +1,71 @@
+name: codex
+
+# Runs Codex on the owner's request only: `@codex ...` in an issue or pull request conversation comment.
+# Authenticates with an OpenAI API key (billed per token; there is no subscription token for CI). Two independent
+# controls keep anyone else from using it:
+#   1. The job-level `if` checks the immutable id of the account that caused the event; for anyone else the job
+#      is skipped, so no secret is read.
+#   2. The key is an environment secret (environment `codex`, deployments limited to `main`), so it is
+#      unavailable to any run on another branch or to a copy of this file edited on a branch.
+# issue_comment always runs the workflow file from the default branch. Do not add pull_request_review_comment,
+# pull_request_review or pull_request_target: they run the file from the pull request's own merge commit, and
+# the `codex` environment would (correctly) refuse them.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  codex:
+    # {{owner_id}} is the id of the repository owner ({{owner}}); ids cannot be taken over like a renamed login.
+    if: >-
+      github.event.sender.id == {{owner_id}} &&
+      github.repository_owner == '{{owner}}' &&
+      contains(github.event.comment.body, '@codex') &&
+      !startsWith(github.event.comment.body, '**[Claude]**')
+    runs-on: ubuntu-latest
+    environment: codex
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Project setup: install the toolchain the gates in AGENTS.md need (setup-node, setup-dotnet, setup-python, ...).
+      # The `:workspace` profile has no network access, so install dependencies here, before Codex runs.
+      # This file is yours after install; `factory.py update` never overwrites it.
+      # v1.12 (commit pinned: this step holds the API key)
+      - name: Run Codex
+        id: codex
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":workspace"
+          prompt: |
+            You are working in ${{ github.repository }}, on issue or pull request #${{ github.event.issue.number }}.
+            Follow AGENTS.md. Answer the owner's request below; do not push, merge or change settings.
+
+            ${{ github.event.comment.body }}
+      - name: Post the reply
+        if: steps.codex.outputs.final-message != ''
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          REPLY: ${{ steps.codex.outputs.final-message }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '**[Claude]** (Codex)\n\n' + process.env.REPLY,
+            });

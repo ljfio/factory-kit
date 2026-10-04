@@ -1,4 +1,7 @@
-# The CI agent (`@claude`)
+# The CI agents (`@claude`, `@codex`)
+
+One workflow per enabled agent, each with the same two controls below. Claude is described first; per-agent secret
+and cost sections follow.
 
 `.github/workflows/claude.yml` runs [`claude-code-action`](https://github.com/anthropics/claude-code-action) when
 the owner comments `@claude` on an issue or pull request. It authenticates with the owner's Claude subscription
@@ -32,3 +35,18 @@ a paid plan, enable "Require review from Code Owners" on the default branch.
 5. Test: comment `@claude summarise this issue` on an issue.
 
 The action is pinned to a commit because that step holds the token; update the pin deliberately.
+
+## Codex (`@codex`)
+
+`.github/workflows/codex.yml` ships only when `codex` is enabled. It runs
+[`openai/codex-action`](https://github.com/openai/codex-action) (pinned to the commit of `v1.12`) when the owner
+comments `@codex`, with the `:workspace` permission profile (no network), and posts Codex's final message back as a
+comment starting `**[Claude]** (Codex)`. It does not push; widen that deliberately if you want it to.
+
+- **Secret and cost:** an OpenAI API key, `OPENAI_API_KEY`, billed per token on your OpenAI account. A ChatGPT
+  subscription does not authenticate CI, so unlike `@claude` there is no flat-rate option. Cost is bounded only by
+  `timeout-minutes` and the owner-only trigger; set a spend limit on the key.
+- **Setup:** as for Claude, but the environment is `codex` (deployments limited to the default branch) and the
+  secret is `OPENAI_API_KEY`; run `codex` setup steps for your toolchain before the Codex step.
+- **Controls:** the same `if` (sender id, repository owner, `@codex`, not a `**[Claude]**` reply) and
+  environment-scoped secret. The action itself also refuses callers without write access.

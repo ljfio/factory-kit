@@ -38,6 +38,7 @@ A project installs the kit once and then runs its work through GitHub:
 | Issue and PR templates | `kit/.github/ISSUE_TEMPLATE/*`, `pull_request_template.md` | same paths | scaffold |
 | CODEOWNERS | `kit/.github/CODEOWNERS` | `.github/CODEOWNERS` | scaffold |
 | CI agent | `kit/.github/workflows/claude.yml` | `.github/workflows/claude.yml` (only if `claude` is enabled) | scaffold, agent-owned |
+| CI agent | `kit/.github/workflows/codex.yml` | `.github/workflows/codex.yml` (only if `codex` is enabled) | scaffold, agent-owned |
 
 **Managed** files are replaced on `update` unless the project edited them (then the kit's version is saved as
 `<file>.factory-new` and nothing is overwritten). **Scaffolds** are created once and belong to the project afterwards.
