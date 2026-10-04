@@ -5,6 +5,8 @@
                               install the kit into the current repository
   factory.py update [--ref REF] [--dry-run] [--force]
                               bring the kit files up to date with the latest release
+  factory.py agent add|remove NAME
+                              enable or disable an agent (claude, codex, gemini, copilot, cursor)
   factory.py status           show what differs from the installed kit
   factory.py bootstrap        create the labels (and milestones from config `waves`) on GitHub
   factory.py version
@@ -21,7 +23,7 @@ Three kinds of file, recorded in .factory/manifest.json with the hash that was i
             is never overwritten, the kit's version is written next to it as <file>.factory-new instead.
   scaffold  workflows, CODEOWNERS, issue and PR templates, config. Created once and yours from then on;
             when the kit changes one, the new version is written as <file>.factory-new for you to merge.
-  block     a marked section of CLAUDE.md, replaced on update.
+  block     a marked section of the instruction file (AGENTS.md or CLAUDE.md), replaced on update.
 """
 import argparse
 import hashlib
@@ -108,8 +110,35 @@ def fetch_kit(source, ref):
     return kit, ref, commit, version
 
 
+def agent_names(cfg, meta):
+    names = cfg.get("agents") or ["claude"]
+    unknown = [n for n in names if n not in meta["agents"]]
+    if unknown:
+        die(f"unknown agent(s): {', '.join(unknown)} (known: {', '.join(meta['agents'])})")
+    return list(dict.fromkeys(names))
+
+
+def skills_dirs(names, meta):
+    """The fewest skills directories that every enabled agent reads; agents with one choice decide first."""
+    chosen = []
+    for n in sorted(names, key=lambda n: len(meta["agents"][n]["skills"])):
+        opts = meta["agents"][n]["skills"]
+        if not any(d in chosen for d in opts):
+            chosen.append(opts[0])
+    return chosen
+
+
+def instruction_files(cfg, meta, names):
+    """Map of instruction file -> True when it holds the managed block, False when it only points at the one that does."""
+    canonical = cfg.get("instructions", "CLAUDE.md")
+    out = {canonical: True}
+    for n in names:
+        out.setdefault(meta["agents"][n]["instructions"], False)
+    return out
+
+
 def kit_files(kit, cfg):
-    """Map of project path -> (bytes rendered with the project's config, kind)."""
+    """Map of project path -> (bytes rendered with the project's config, kind, mode), and the managed block."""
     meta = json.loads((kit / "kit.json").read_text())
     managed = meta["managed"]
     exclude = cfg.get("exclude", [])
@@ -119,8 +148,21 @@ def kit_files(kit, cfg):
         "label_needs_env": labels.get("needs_env", "needs-env"),
         "label_env_gated": labels.get("env_gated", "env-gated"),
     }
+    names = agent_names(cfg, meta)
+    owned = {f: n for n, a in meta["agents"].items() for f in a.get("files", [])}
+    skills_src = meta["skills_source"]
+    targets = [d.rstrip("/") + "/" for d in skills_dirs(names, meta)]
     out = {}
-    sources = {str(p.relative_to(kit / "kit")): p for p in (kit / "kit").rglob("*") if p.is_file()}
+    sources = {}
+    for p in (kit / "kit").rglob("*"):
+        if not p.is_file():
+            continue
+        rel = str(p.relative_to(kit / "kit"))
+        if rel.startswith(skills_src):  # the skills are written once per directory an enabled agent reads
+            for t in targets:
+                sources[t + rel[len(skills_src):]] = p
+        elif owned.get(rel) is None or owned[rel] in names:  # a file an agent owns is skipped unless it is enabled
+            sources[rel] = p
     sources[".factory/factory.py"] = kit / "factory.py"
     for rel, src in sorted(sources.items()):
         if rel == meta["claude_md_block"] or any(rel.startswith(x) for x in exclude):
@@ -134,8 +176,8 @@ def kit_files(kit, cfg):
             except UnicodeDecodeError:
                 pass
         out[rel] = (data, kind, 0o755 if rel.endswith(".py") else 0o644)
-    block = (kit / "kit" / meta["claude_md_block"]).read_text().strip()
-    return out, block
+    block = (kit / "kit" / meta["instruction_block"]).read_text().strip()
+    return out, block, instruction_files(cfg, meta, names)
 
 
 # ---- project state ---------------------------------------------------------------------------------------------
@@ -151,27 +193,31 @@ def write_file(rel, data, mode):
     p.chmod(mode)
 
 
-def apply_block(block, dry):
-    f = Path("CLAUDE.md")
+def pointer_block(canonical):
+    return f"@{canonical}\n\nThe project instructions for this repository are in {canonical}; read that file first."
+
+
+def apply_block(name, block, dry):
+    f = Path(name)
     marked = f"{BEGIN}\n{block}\n{END}"
     if not f.exists():
-        action, text = "create CLAUDE.md", f"# {Path.cwd().name}\n\n{marked}\n"
+        action, text = f"create {name}", f"# {Path.cwd().name}\n\n{marked}\n"
     else:
         cur = f.read_text()
         if BEGIN in cur and END in cur:
             new = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), lambda _: marked, cur, flags=re.S)
             if new == cur:
-                return "CLAUDE.md block unchanged"
-            action, text = "update the CLAUDE.md block", new
+                return f"{name} block unchanged"
+            action, text = f"update the {name} block", new
         else:
-            action, text = "append the workflow block to CLAUDE.md", cur.rstrip("\n") + "\n\n" + marked + "\n"
+            action, text = f"append the workflow block to {name}", cur.rstrip("\n") + "\n\n" + marked + "\n"
     if not dry:
         f.write_text(text)
     return action
 
 
 def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
-    files, block = kit_files(kit, cfg)
+    files, block, instr = kit_files(kit, cfg)
     old = manifest.get("files", {})
     new_manifest = {}
     report = []
@@ -230,12 +276,19 @@ def sync(kit, ref, commit, version, cfg, manifest, dry, force, first):
                 report.append(("removed", rel, "no longer in the kit"))
                 if not dry:
                     p.unlink()
+                    for d in p.parents:  # leave no empty directories behind
+                        if d == Path(".") or any(d.iterdir()):
+                            break
+                        d.rmdir()
                 continue
             report.append(("kept", rel, "no longer in the kit but modified locally"))
         new_manifest[rel] = rec
-    report.append(("block", "CLAUDE.md", apply_block(block, dry)))
+    canonical = next(f for f, full in instr.items() if full)
+    for name, full in instr.items():
+        report.append(("block", name, apply_block(name, block if full else pointer_block(canonical), dry)))
     if not dry:
         write_json(MANIFEST, {"source": manifest.get("source_arg"), "ref": ref, "version": version, "commit": commit,
+                              "agents": cfg.get("agents") or ["claude"],
                               "files": dict(sorted(new_manifest.items()))})
     return report
 
@@ -285,19 +338,25 @@ def cmd_init(a):
     cfg = json.loads(cfg_text)
     if a.project:
         cfg["project"] = a.project
+    meta = json.loads((kit / "kit.json").read_text())
+    cfg["agents"] = agent_names({"agents": [x for x in a.agents.split(",") if x]}, meta)
+    files = {meta["agents"][n]["instructions"] for n in cfg["agents"]}
+    cfg["instructions"] = "AGENTS.md" if len(files) > 1 and "AGENTS.md" in files else sorted(files)[0]
     if not a.dry_run:
         write_json(CONFIG, cfg)
     report = sync(kit, ref, commit, version, cfg, {"source_arg": source}, a.dry_run, False, True)
     print(f"factory-kit {version} ({ref} {commit[:7]}) installed from {source}\n")
     print_report(report)
+    claude = "claude" in cfg["agents"]
     print(f"""
 Next:
   1. Edit .factory/config.json: project (the number of your GitHub project), areas, waves, hotspots.
   2. python3 .factory/factory.py bootstrap     (labels and milestones)
-  3. Fill the Gates section of CLAUDE.md, and the toolchain setup in .github/workflows/claude.yml.
-  4. For the CI agent: create the `claude` environment (deployments limited to your default branch) with the
-     secret CLAUDE_CODE_OAUTH_TOKEN (see docs/ci-agent.md in the kit).
-  5. Commit .factory .claude .github CLAUDE.md on a branch and open a pull request.""")
+  3. Fill the Gates section of {cfg["instructions"]}""" + (", and the toolchain setup in .github/workflows/claude.yml." if claude else "."))
+    if claude:
+        print("""  4. For the CI agent: create the `claude` environment (deployments limited to your default branch) with the
+     secret CLAUDE_CODE_OAUTH_TOKEN (see docs/ci-agent.md in the kit).""")
+    print("  5. Commit .factory .github and the agent directories and instruction files on a branch and open a pull request.")
 
 
 def installed():
@@ -311,7 +370,7 @@ def cmd_update(a):
     manifest, cfg = installed()
     source = a.source or manifest.get("source") or DEFAULT_SOURCE
     kit, ref, commit, version = fetch_kit(source, a.ref)
-    if commit == manifest.get("commit") and not a.force:
+    if commit == manifest.get("commit") and not a.force and manifest.get("agents") == (cfg.get("agents") or ["claude"]):
         print(f"already at {version} ({commit[:7]})")
         return
     manifest["source_arg"] = source
@@ -321,6 +380,22 @@ def cmd_update(a):
     if added:
         print(f"  + config keys added to .factory/config.json: {', '.join(added)}")
     print_report(report)
+
+
+def cmd_agent(a):
+    """Enable or disable an agent: edit config, then sync so its files are added (or removed when unedited)."""
+    manifest, cfg = installed()
+    names = list(cfg.get("agents") or ["claude"])
+    if a.action == "add" and a.name not in names:
+        names.append(a.name)
+    elif a.action == "remove":
+        names = [n for n in names if n != a.name]
+    if not names:
+        die("at least one agent must stay enabled")
+    cfg["agents"] = names
+    write_json(CONFIG, cfg)
+    a.force, a.dry_run = False, False
+    cmd_update(a)
 
 
 def cmd_status(_):
@@ -367,8 +442,15 @@ def main():
         if name == "init":
             s.add_argument("--repo")
             s.add_argument("--project", type=int)
+            s.add_argument("--agents", default="claude",
+                           help="comma-separated agents to install for: claude, codex, gemini, copilot, cursor")
         else:
             s.add_argument("--force", action="store_true", help="overwrite managed files you changed")
+    s = sub.add_parser("agent")
+    s.add_argument("action", choices=["add", "remove"])
+    s.add_argument("name")
+    s.add_argument("--ref")
+    s.add_argument("--source")
     sub.add_parser("status").add_argument("-v", action="store_true")
     sub.add_parser("bootstrap")
     sub.add_parser("version")
@@ -377,7 +459,7 @@ def main():
         m = read_json(MANIFEST)
         print(m["version"] if m else "not installed")
     else:
-        {"init": cmd_init, "update": cmd_update, "status": cmd_status, "bootstrap": cmd_bootstrap}[a.cmd](a)
+        {"init": cmd_init, "update": cmd_update, "agent": cmd_agent, "status": cmd_status, "bootstrap": cmd_bootstrap}[a.cmd](a)
 
 
 if __name__ == "__main__":

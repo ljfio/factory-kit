@@ -1,4 +1,14 @@
 {
-  "managed": [".claude/skills/", ".claude/scripts/board.py", ".factory/factory.py"],
-  "claude_md_block": ".factory/CLAUDE.snippet.md"
+  "managed": [".claude/skills/", ".agents/skills/", ".factory/scripts/", ".factory/factory.py"],
+  "claude_md_block": ".factory/CLAUDE.snippet.md",
+  "instruction_block": ".factory/CLAUDE.snippet.md",
+  "skills_source": ".claude/skills/",
+  "agents": {
+    "claude":  {"skills": [".claude/skills"], "instructions": "CLAUDE.md",
+                "files": [".github/workflows/claude.yml"]},
+    "codex":   {"skills": [".agents/skills"], "instructions": "AGENTS.md"},
+    "gemini":  {"skills": [".agents/skills"], "instructions": "GEMINI.md"},
+    "copilot": {"skills": [".agents/skills", ".claude/skills"], "instructions": "AGENTS.md"},
+    "cursor":  {"skills": [".agents/skills", ".claude/skills"], "instructions": "AGENTS.md"}
+  }
 }
