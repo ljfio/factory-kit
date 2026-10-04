@@ -1,0 +1,8 @@
+# Anything that runs with secrets or steers the agents needs the owner's review.
+# GitHub requests a review from these owners on every pull request that touches a path.
+# Enforcement ("Require review from Code Owners") needs branch protection or a ruleset, which
+# private repositories on GitHub Free do not have.
+/.github/   @ljfio
+/.claude/   @ljfio
+/.factory/  @ljfio
+CLAUDE.md   @ljfio

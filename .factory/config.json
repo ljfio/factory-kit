@@ -1,0 +1,36 @@
+{
+  "repo": "ljfio/factory-kit",
+  "owner": "ljfio",
+  "owner_id": 1462272,
+  "project": 4,
+  "areas": [
+    "installer",
+    "skills",
+    "ci-agent",
+    "docs"
+  ],
+  "waves": [
+    "v0.3",
+    "v0.4",
+    "v0.5"
+  ],
+  "hotspots": [
+    "factory.py",
+    "kit.json"
+  ],
+  "notes": [
+    "Tests overlay the working tree; run `python3 -m unittest discover -s tests` and py_compile before a pull request"
+  ],
+  "verification_epic": null,
+  "labels": {
+    "env_gated": "env-gated",
+    "needs_env": "needs-env"
+  },
+  "exclude": [
+    ".github/workflows/claude.yml"
+  ],
+  "agents": [
+    "claude"
+  ],
+  "instructions": "CLAUDE.md"
+}
