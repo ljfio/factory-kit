@@ -50,3 +50,20 @@ comment starting `**[Claude]** (Codex)`. It does not push; widen that deliberate
   secret is `OPENAI_API_KEY`; run `codex` setup steps for your toolchain before the Codex step.
 - **Controls:** the same `if` (sender id, repository owner, `@codex`, not a `**[Claude]**` reply) and
   environment-scoped secret. The action itself also refuses callers without write access.
+
+## Gemini (`@gemini`)
+
+`.github/workflows/gemini.yml` ships only when `gemini` is enabled. It runs Google's
+[`run-gemini-cli`](https://github.com/google-github-actions/run-gemini-cli) action (pinned to the commit of
+`v0.1.22`; the action publishes `v0.x` tags only, no moving major tag) when the owner comments `@gemini`, and posts the action's
+`summary` output as a comment starting `**[Claude]** (Gemini)`. The kit's workflow is a single owner-only job, not
+the upstream dispatch workflows (those also react to other users' issues and pull requests).
+
+- **Auth model and cost:** the action's default is a Gemini API key from
+  [Google AI Studio](https://aistudio.google.com/) (`gemini_api_key`), which has a free-tier quota and is billed per
+  token beyond it. The action also supports Vertex AI and Workload Identity Federation (see its
+  [Authentication](https://github.com/google-github-actions/run-gemini-cli#authentication) section); the kit
+  workflow uses the API key. Set a quota or spend limit on the key.
+- **Secret:** `GEMINI_API_KEY`, in the environment `gemini` (deployments limited to the default branch).
+- **Controls:** the same `if` and environment-scoped secret as the others; the third-party actions are pinned to
+  commits. Add `.gemini/` to `.gitignore` (the action writes its settings there).

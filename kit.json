@@ -8,7 +8,8 @@
                 "files": [".github/workflows/claude.yml"]},
     "codex":   {"skills": [".agents/skills"], "instructions": "AGENTS.md",
                 "files": [".github/workflows/codex.yml"]},
-    "gemini":  {"skills": [".agents/skills"], "instructions": "GEMINI.md"},
+    "gemini":  {"skills": [".agents/skills"], "instructions": "GEMINI.md",
+                "files": [".github/workflows/gemini.yml"]},
     "copilot": {"skills": [".agents/skills", ".claude/skills"], "instructions": "AGENTS.md"},
     "cursor":  {"skills": [".agents/skills", ".claude/skills"], "instructions": "AGENTS.md"}
   }

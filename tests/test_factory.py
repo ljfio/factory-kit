@@ -166,8 +166,15 @@ class FactoryTest(unittest.TestCase):
         self.assertTrue((p / ".github/workflows/codex.yml").exists())
         self.assertFalse((p / ".github/workflows/claude.yml").exists())
 
+    def test_gemini_owns_its_workflow(self):
+        self.assertFalse((self.proj / ".github/workflows/gemini.yml").exists())
+        p = self.fresh_project("--agents", "gemini")
+        self.assertTrue((p / ".github/workflows/gemini.yml").exists())
+        self.assertFalse((p / ".github/workflows/claude.yml").exists())
+
     def test_ci_workflows_keep_owner_controls(self):
-        for name, env, secret in (("claude", "claude", "CLAUDE_CODE_OAUTH_TOKEN"), ("codex", "codex", "OPENAI_API_KEY")):
+        for name, env, secret in (("claude", "claude", "CLAUDE_CODE_OAUTH_TOKEN"), ("codex", "codex", "OPENAI_API_KEY"),
+                                  ("gemini", "gemini", "GEMINI_API_KEY")):
             wf = (ROOT / f"kit/.github/workflows/{name}.yml").read_text()
             self.assertIn("github.event.sender.id == {{owner_id}}", wf, name)
             self.assertIn(f"environment: {env}", wf, name)
