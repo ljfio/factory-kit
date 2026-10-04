@@ -94,7 +94,7 @@ report a scaffold conflict on the template).
 - `update`: no-op if the commit and agents are unchanged; otherwise per file: replace if unedited, conflict
   (`.factory-new`) if both sides changed, keep scaffolds, delete files the kit removed (when unedited).
 - `agent add|remove NAME`: edit `agents`, then sync (files appear, or disappear if unedited).
-- `status` (missing/edited managed files, pending `.factory-new`), `bootstrap` (labels, milestones), `version`.
+- `status` (missing/edited managed files, pending `.factory-new`), `bootstrap` (labels, milestones), `doctor` (read-only checks of the GitHub side, with the fix for each failure), `version`.
 - `kit.json` is the kit's own metadata: which paths are `managed`, the **agent registry**, and which file is the
   block source. The manifest records the hash of what the kit offered, not of the local file; that is how "the
   project edited it" and "the kit changed it" are told apart. Scaffolds also record `raw`, the hash of the

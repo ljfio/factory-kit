@@ -47,6 +47,10 @@ improvements. The original project is the first adopter, but it must not be name
   `.factory-new`; scaffolds that exist are still kept.
 - `exclude` in config (path prefixes) skips files. `status` lists missing or edited managed files and pending
   `.factory-new` files. `bootstrap` creates labels and milestones with `gh`.
+  `doctor` is read-only: gh signed in with the `project` scope, repository reachable, project exists and is linked to
+  the repository, labels and milestones exist, and (claude enabled) the `claude` environment and its
+  `CLAUDE_CODE_OAUTH_TOKEN` secret. Each failure prints the command that fixes it; exit 1 if any check fails. The
+  tests run it against a fake `gh` that answers by argument prefix.
 - `--source` accepts a git URL or a local path (tests and local development use a path).
 
 ## `board.py` (installed at `.factory/scripts/board.py`)

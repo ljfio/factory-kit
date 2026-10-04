@@ -285,6 +285,74 @@ class FactoryTest(unittest.TestCase):
         self.assertIn("env_gated", cfg["labels"])  # the kit's defaults fill the gaps
         self.assertEqual((cfg["repo"], cfg["owner"]), ("acme/widgets", "dev"))
 
+    FAKE_GH = """#!/usr/bin/env python3
+import json, os, sys
+args = " ".join(sys.argv[1:])
+for prefix, rc, out in json.load(open(os.environ["FAKE_GH_RESPONSES"])):
+    if args.startswith(prefix):
+        sys.stdout.write(out)
+        sys.exit(rc)
+sys.stderr.write("fake gh: no response for " + args)
+sys.exit(1)
+"""
+
+    def doctor(self, responses, **cfg):
+        """Run `doctor` against a fake gh that answers by argument prefix: [(prefix, exit code, stdout)]."""
+        gh = self.tmp / "bin" / "gh"
+        gh.write_text(self.FAKE_GH)
+        rfile = self.tmp / "responses.json"
+        rfile.write_text(json.dumps(responses))
+        self.env["FAKE_GH_RESPONSES"] = str(rfile)
+        self.set_config(**cfg)
+        return subprocess.run([sys.executable, str(ROOT / "factory.py"), "doctor"], cwd=self.proj,
+                              capture_output=True, text=True, env=self.env)
+
+    def healthy(self, labels=None):
+        names = labels if labels is not None else sorted(self.wanted)
+        return [
+            ["auth status", 0, "Logged in\n  - Token scopes: 'project', 'repo'\n"],
+            ["repo view", 0, "{}"],
+            ["project view", 0, "{}"],
+            ["api graphql", 0, json.dumps({"data": {"repository": {"projectsV2": {"nodes": [{"number": 3}]}}}})],
+            ["label list", 0, json.dumps([{"name": n} for n in names])],
+            ["api repos/acme/widgets/milestones", 0, json.dumps([{"title": "v1"}])],
+            ["api repos/acme/widgets/environments/claude", 0, "{}"],
+            ["secret list", 0, "CLAUDE_CODE_OAUTH_TOKEN\t2026-01-01\n"],
+        ]
+
+    @property
+    def wanted(self):
+        sys.path.insert(0, str(ROOT))
+        import factory
+        return factory.wanted_labels(json.loads((self.proj / ".factory/config.json").read_text()))
+
+    def test_doctor_passes_when_everything_is_set_up(self):
+        p = self.doctor(self.healthy(), project=3, waves=["v1"])
+        self.assertEqual(p.returncode, 0, p.stdout)
+        self.assertIn("All checks passed", p.stdout)
+
+    def test_doctor_reports_missing_label(self):
+        names = [n for n in self.wanted if n != "decision-needed"]
+        p = self.doctor(self.healthy(names), project=3, waves=["v1"])
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("FAIL labels exist", p.stdout)
+        self.assertIn("decision-needed", p.stdout)
+        self.assertIn("fix: python3 .factory/factory.py bootstrap", p.stdout)
+
+    def test_doctor_reports_missing_project_scope_and_secret(self):
+        r = self.healthy()
+        r[0][2] = "Logged in\n  - Token scopes: 'repo'\n"
+        r[7] = ["secret list", 0, ""]
+        p = self.doctor(r, project=3, waves=["v1"])
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("gh auth refresh -s project", p.stdout)
+        self.assertIn("gh secret set CLAUDE_CODE_OAUTH_TOKEN --env claude -R acme/widgets", p.stdout)
+
+    def test_doctor_stops_when_gh_is_not_signed_in(self):
+        p = self.doctor([["auth status", 1, ""]], project=3)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("gh auth login", p.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
