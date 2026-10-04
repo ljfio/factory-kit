@@ -1,0 +1,13 @@
+{
+  "repo": "{{repo}}",
+  "owner": "{{owner}}",
+  "owner_id": {{owner_id}},
+  "project": null,
+  "areas": [],
+  "waves": [],
+  "hotspots": [],
+  "notes": [],
+  "verification_epic": null,
+  "labels": { "env_gated": "env-gated", "needs_env": "needs-env" },
+  "exclude": []
+}

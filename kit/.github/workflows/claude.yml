@@ -1,0 +1,56 @@
+name: claude
+
+# Runs Claude Code on the owner's request only: `@claude ...` in an issue or pull request conversation comment.
+# Authenticates with the owner's Claude subscription. Two independent controls keep anyone else from using it:
+#   1. The job-level `if` checks the immutable id of the account that caused the event; for anyone else the job
+#      is skipped, so no secret is read.
+#   2. The token is an environment secret (environment `claude`, deployments limited to `main`), so it is
+#      unavailable to any run on another branch or to a copy of this file edited on a branch.
+# issue_comment always runs the workflow file from the default branch. Do not add pull_request_review_comment,
+# pull_request_review or pull_request_target: they run the file from the pull request's own merge commit, and
+# the `claude` environment would (correctly) refuse them.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    # {{owner_id}} is the id of the repository owner ({{owner}}); ids cannot be taken over like a renamed login.
+    if: >-
+      github.event.sender.id == {{owner_id}} &&
+      github.repository_owner == '{{owner}}' &&
+      contains(github.event.comment.body, '@claude') &&
+      !startsWith(github.event.comment.body, '**[Claude]**')
+    runs-on: ubuntu-latest
+    environment: claude
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Project setup: install the toolchain the gates in CLAUDE.md need (setup-node, setup-dotnet, setup-python, ...).
+      # This file is yours after install; `factory.py update` never overwrites it.
+      # v1 (commit pinned: this step holds the subscription token)
+      - uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Add your toolchain to --allowedTools (for example Bash(npm:*), Bash(dotnet:*)).
+          # Bounded work per run: the subscription limits are shared with the owner's own sessions.
+          claude_args: >-
+            --max-turns 60
+            --allowedTools "Bash(python3:*),Bash(git:*),Bash(gh pr:*),Bash(gh issue:*)"
+            --disallowedTools "Bash(git push origin main:*),Bash(git push origin HEAD:main:*),Bash(gh pr merge:*),Bash(gh api:*),Bash(gh repo:*),Bash(gh secret:*),Bash(gh workflow:*)"

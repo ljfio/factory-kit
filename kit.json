@@ -1,0 +1,4 @@
+{
+  "managed": [".claude/skills/", ".claude/scripts/board.py", ".factory/factory.py"],
+  "claude_md_block": ".factory/CLAUDE.snippet.md"
+}
