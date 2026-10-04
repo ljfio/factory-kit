@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/ljfio/factory-kit/main/factory.py |
 or clone this repo and run `python3 factory.py init --project 3` in your project. Then:
 
 1. Edit `.factory/config.json` (areas, waves, hotspots) and fill the **Gates** section of `CLAUDE.md`.
-2. `python3 .factory/factory.py bootstrap` creates the labels and milestones on GitHub.
+2. `python3 .factory/factory.py bootstrap` creates the labels and milestones on GitHub; `python3 .factory/factory.py doctor` checks the setup and prints the fix for anything missing.
 3. Set up the CI agent if you want it: [`docs/ci-agent.md`](docs/ci-agent.md).
 4. Commit on a branch and open a pull request.
 

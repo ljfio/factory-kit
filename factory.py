@@ -10,6 +10,7 @@
                               enable or disable an agent (claude, codex, gemini, copilot, cursor)
   factory.py status           show what differs from the installed kit
   factory.py bootstrap        create the labels (and milestones from config `waves`) on GitHub
+  factory.py doctor           check gh auth, project, labels, milestones and CI agent setup; read-only, exit 1 if any fail
   factory.py version
 
 Run from the root of a git repository. Standard library only; needs git, and gh for init and bootstrap.
@@ -425,15 +426,20 @@ def cmd_status(_):
         print(f"  pending merge: {p}")
 
 
-def cmd_bootstrap(_):
-    manifest, cfg = installed()
-    repo = cfg["repo"]
+def wanted_labels(cfg):
     labels = dict(STANDARD_LABELS)
     lab = cfg.get("labels", {})
     labels[lab.get("env_gated", "env-gated")] = ("D4C5F9", "Cannot start before the environment is deployed")
     labels[lab.get("needs_env", "needs-env")] = ("F9D0C4", "Needs the real environment to finish")
     for area in cfg.get("areas", []):
         labels[f"area:{area}"] = ("1D76DB", f"Area: {area}")
+    return labels
+
+
+def cmd_bootstrap(_):
+    manifest, cfg = installed()
+    repo = cfg["repo"]
+    labels = wanted_labels(cfg)
     for name, (color, desc) in labels.items():
         run("gh", "label", "create", name, "-R", repo, "--color", color, "--description", desc, "--force")
         print(f"  label {name}")
@@ -442,6 +448,80 @@ def cmd_bootstrap(_):
         if w not in have:
             run("gh", "api", f"repos/{repo}/milestones", "-f", f"title={w}")
             print(f"  milestone {w}")
+
+
+def try_gh(*args):
+    """(ok, stdout+stderr) of a gh call; never exits."""
+    try:
+        p = subprocess.run(["gh", *args], capture_output=True, text=True)
+    except OSError as e:
+        return False, str(e)
+    return p.returncode == 0, (p.stdout + p.stderr).strip()
+
+
+def doctor_checks(cfg):
+    """List of (name, ok, detail, fix). Read-only: only gh reads."""
+    repo = cfg.get("repo", "")
+    checks = []
+
+    def check(name, ok, detail="", fix=""):
+        checks.append((name, bool(ok), detail, fix))
+
+    ok, out = try_gh("auth", "status")
+    check("gh is signed in", ok, "" if ok else out.splitlines()[0] if out else "gh not available", "gh auth login")
+    if not ok:
+        return checks  # nothing below can be answered
+    check("gh token has the project scope", re.search(r"Token scopes:.*\bproject\b", out), "", "gh auth refresh -s project")
+    check("repository is reachable", try_gh("repo", "view", repo, "--json", "name")[0], repo,
+          "set `repo` in .factory/config.json to OWNER/NAME")
+    num, powner = cfg.get("project"), cfg.get("project_owner") or repo.split("/")[0]
+    if not num:
+        check("project number is set", False, "", "set `project` in .factory/config.json (gh project create --owner "
+                                                  f"{powner} --title NAME)")
+    else:
+        ok, _ = try_gh("project", "view", str(num), "--owner", powner, "--format", "json")
+        check(f"project {num} exists", ok, f"owner {powner}", f"gh project create --owner {powner} --title NAME, "
+                                                              "then set `project` in .factory/config.json")
+        if ok:
+            ok, out = try_gh("api", "graphql", "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n)"
+                             "{projectsV2(first:50){nodes{number}}}}", "-f", f"o={repo.split('/')[0]}",
+                             "-f", f"n={repo.split('/')[-1]}")
+            try:
+                linked = [n["number"] for n in json.loads(out)["data"]["repository"]["projectsV2"]["nodes"]]
+            except (ValueError, KeyError, TypeError):
+                linked = []
+            check(f"project {num} is linked to {repo}", num in linked, "",
+                  f"gh project link {num} --owner {powner} --repo {repo}")
+    ok, out = try_gh("label", "list", "-R", repo, "--limit", "500", "--json", "name")
+    have = {x["name"] for x in json.loads(out)} if ok and out.startswith("[") else set()
+    missing = sorted(set(wanted_labels(cfg)) - have)
+    check("labels exist", not missing, "missing: " + ", ".join(missing), "python3 .factory/factory.py bootstrap")
+    ok, out = try_gh("api", f"repos/{repo}/milestones?state=all&per_page=100")
+    have = {m["title"] for m in json.loads(out)} if ok and out.startswith("[") else set()
+    missing = [w for w in cfg.get("waves", []) if w not in have]
+    check("milestones exist", not missing, "missing: " + ", ".join(missing), "python3 .factory/factory.py bootstrap")
+    agents = cfg.get("agents") or ["claude"]
+    if "claude" in agents:
+        ok, _ = try_gh("api", f"repos/{repo}/environments/claude")
+        check("`claude` environment exists", ok, "", f"gh api -X PUT repos/{repo}/environments/claude "
+                                                    "(then limit deployments to the default branch)")
+        ok, out = try_gh("secret", "list", "--env", "claude", "-R", repo)
+        check("CLAUDE_CODE_OAUTH_TOKEN is set in the environment", ok and "CLAUDE_CODE_OAUTH_TOKEN" in out, "",
+              f"gh secret set CLAUDE_CODE_OAUTH_TOKEN --env claude -R {repo}")
+    return checks
+
+
+def cmd_doctor(_):
+    manifest, cfg = installed()
+    checks = doctor_checks(cfg)
+    for name, ok, detail, fix in checks:
+        print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f"  ({detail})" if detail and not ok else ""))
+        if not ok and fix:
+            print(f"       fix: {fix}")
+    bad = sum(1 for c in checks if not c[1])
+    print(f"\n{bad} problem(s)." if bad else "\nAll checks passed.")
+    if bad:
+        sys.exit(1)
 
 
 def main():
@@ -471,13 +551,15 @@ def main():
     s.add_argument("--source")
     sub.add_parser("status").add_argument("-v", action="store_true")
     sub.add_parser("bootstrap")
+    sub.add_parser("doctor")
     sub.add_parser("version")
     a = ap.parse_args()
     if a.cmd == "version":
         m = read_json(MANIFEST)
         print(m["version"] if m else "not installed")
     else:
-        {"init": cmd_init, "update": cmd_update, "agent": cmd_agent, "status": cmd_status, "bootstrap": cmd_bootstrap}[a.cmd](a)
+        {"init": cmd_init, "update": cmd_update, "agent": cmd_agent, "status": cmd_status, "bootstrap": cmd_bootstrap,
+            "doctor": cmd_doctor}[a.cmd](a)
 
 
 if __name__ == "__main__":
