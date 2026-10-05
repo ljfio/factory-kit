@@ -194,7 +194,7 @@ def write_file(rel, data, mode):
 
 
 def pointer_block(canonical):
-    return f"@{canonical}\n\nThe project instructions for this repository are in {canonical}; read that file first."
+    return f"@./{canonical}\n\nThe project instructions for this repository are in {canonical}; read that file first."
 
 
 def apply_block(name, block, dry):

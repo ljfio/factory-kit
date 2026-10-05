@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Pointer files now import with `@./AGENTS.md` (Gemini documents only `./` and `../` forms). Codex and Gemini paths
+  checked against vendor docs; sources in `docs/agents.md`.
+
 ## 0.2.0
 
 - Agent-neutral: `agents` in config (`init --agents`, `factory.py agent add|remove`) for claude, codex, gemini,

@@ -177,7 +177,7 @@ class FactoryTest(unittest.TestCase):
         self.assertIn("factory-kit:begin -->\n## Delivery workflow", (p / "AGENTS.md").read_text())
         for pointer in ("CLAUDE.md", "GEMINI.md"):
             text = (p / pointer).read_text()
-            self.assertIn("@AGENTS.md", text)
+            self.assertIn("@./AGENTS.md", text)  # Gemini documents only ./ and ../ imports
             self.assertNotIn("Delivery workflow", text)
 
     def test_copilot_and_cursor_reuse_the_claude_skills(self):

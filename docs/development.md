@@ -159,7 +159,7 @@ pull requests merge.
   conflict, #6 `init --adopt` and config merge, #7 `doctor`, #8 configurable marker, #9-#11 CI agents and Copilot
   guide), v0.4 (#12 forge interface, #13 skills stop calling `gh`), v0.5 (#14 GitLab, #15 Azure DevOps).
 - Yours: #16 decision on the comment marker, #17 enable the CI agent (needs the `claude` environment and secret).
-- Unverified: Codex `AGENTS.md` discovery and Gemini `@file` imports (#3); the CI workflow has never run on GitHub.
+- Unverified: the CI workflow has never run on GitHub. (Agent paths were checked in #3; sources in `agents.md`.)
 
 ### The loop
 
