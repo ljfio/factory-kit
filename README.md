@@ -14,7 +14,7 @@ comments. Install it into a project with one command and pull updates from here 
 | CI agent | `.github/workflows/claude.yml` | `@claude` in an issue or PR comment runs Claude Code in Actions on your subscription, owner only |
 | Review guard | `.github/CODEOWNERS` | Workflows, skills and `CLAUDE.md` need the owner's review |
 | Workflow summary | a marked block in `AGENTS.md` or `CLAUDE.md` | Tells agents how the loop works; replaced on update |
-| Config | `.factory/config.json` | Repo, owner, project number, areas, waves, hotspots, labels |
+| Config | `.factory/config.json` | Repo, owner (`init --owner`, default: your `gh` login), project number, areas, waves, hotspots, labels |
 
 The loop: `board` shows the state, `next-item` picks, `work-package <issue>` claims, branches, builds, runs your
 gates and opens a pull request with `Closes #N`. Open questions are `decision-needed` issues; `review-decisions`
@@ -76,3 +76,5 @@ python3 -m unittest discover -s tests
 Release by bumping `VERSION`, adding to `CHANGELOG.md` and tagging `vX.Y.Z`; `update` follows the latest tag.
 
 MIT licensed.
+
+More: [how it works and how to keep developing it](docs/development.md), [agents](docs/agents.md), [customising](docs/customising.md), [CI agent](docs/ci-agent.md).

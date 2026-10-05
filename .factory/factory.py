@@ -36,7 +36,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEFAULT_SOURCE = os.environ.get("FACTORY_SOURCE") or "https://github.com/ljfio/factory-kit.git"
+DEFAULT_SOURCE = "https://github.com/ljfio/factory-kit.git"
 MANIFEST = Path(".factory/manifest.json")
 CONFIG = Path(".factory/config.json")
 BEGIN, END = "<!-- factory-kit:begin -->", "<!-- factory-kit:end -->"
@@ -326,9 +326,7 @@ def cmd_init(a):
     repo = a.repo or detect_repo()
     if not repo:
         die("cannot tell the GitHub repository; pass --repo OWNER/NAME")
-    # the owner is the person who steers the agents: --owner, else whoever is signed in to gh, else the repo's account
-    repo_account = repo.split("/")[0]
-    owner = a.owner or run("gh", "api", "user", "--jq", ".login", check=False) or repo_account
+    owner = repo.split("/")[0]
     owner_id = int(run("gh", "api", f"users/{owner}", "--jq", ".id"))
     cfg = {"repo": repo, "owner": owner, "owner_id": owner_id}
     source = a.source or DEFAULT_SOURCE
@@ -340,8 +338,6 @@ def cmd_init(a):
     cfg = json.loads(cfg_text)
     if a.project:
         cfg["project"] = a.project
-    if repo_account != owner:
-        cfg["project_owner"] = repo_account  # projects belong to the repo's account (user or organisation)
     meta = json.loads((kit / "kit.json").read_text())
     cfg["agents"] = agent_names({"agents": [x for x in a.agents.split(",") if x]}, meta)
     files = {meta["agents"][n]["instructions"] for n in cfg["agents"]}
@@ -446,8 +442,6 @@ def main():
         if name == "init":
             s.add_argument("--repo")
             s.add_argument("--project", type=int)
-            s.add_argument("--owner", help="GitHub login of the person who steers the agents (default: the user "
-                                           "signed in to gh)")
             s.add_argument("--agents", default="claude",
                            help="comma-separated agents to install for: claude, codex, gemini, copilot, cursor")
         else:

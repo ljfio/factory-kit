@@ -1,0 +1,95 @@
+{
+  "source": ".",
+  "ref": "feat/agent-neutral",
+  "version": "0.2.0",
+  "commit": "02e44e9d64c9078154d097b088cd86b669ded4ff",
+  "agents": [
+    "claude"
+  ],
+  "files": {
+    ".claude/skills/add-adr/SKILL.md": {
+      "sha": "3ea693cfe30e67f4399984c07bf6ae04844df3717f3745631ee8fe6ce51c6be2",
+      "kind": "managed"
+    },
+    ".claude/skills/board/SKILL.md": {
+      "sha": "9f4741ec589e8b3418c214e721cbc39a918e858b52d7f0b713d7ac8c9da038f6",
+      "kind": "managed"
+    },
+    ".claude/skills/continue-work/SKILL.md": {
+      "sha": "048d49b48d8eb87b5088ae93d8fd84e649ba00810715d94c6e80eaf0437158b1",
+      "kind": "managed"
+    },
+    ".claude/skills/new-work-item/SKILL.md": {
+      "sha": "86da790af1533f1daf35119b917d0d1af9c7ff2e9ab376315739861d1cf28b8e",
+      "kind": "managed"
+    },
+    ".claude/skills/next-item/SKILL.md": {
+      "sha": "c17e4fef45965627a5611ee3a9b5e31b733603a2f4bb9d271769e34f7c773c9c",
+      "kind": "managed"
+    },
+    ".claude/skills/raise-decision/SKILL.md": {
+      "sha": "95697eb6a2134d77510e4b893373dc4829837142448de3a6987a9914f0c7fb42",
+      "kind": "managed"
+    },
+    ".claude/skills/review-decisions/SKILL.md": {
+      "sha": "97b8844cb86e2be7a7195edbc798e03ffba6672a4967dfeb822c297ce10a5170",
+      "kind": "managed"
+    },
+    ".claude/skills/run-parallel/SKILL.md": {
+      "sha": "3f523b41515cd8cd91353b4e1659852519be47a01e69fba240dbe46692466f80",
+      "kind": "managed"
+    },
+    ".claude/skills/work-package/SKILL.md": {
+      "sha": "bd9d42c82a18414dd57ea01fed6fc683c3418a36e2f2d303fc4397dce3d7436a",
+      "kind": "managed"
+    },
+    ".factory/config.json": {
+      "sha": "cf70292113375aaa81b9dc9075cb04c1a1d95975f8f2368e29fe2e69e5d75899",
+      "kind": "scaffold"
+    },
+    ".factory/factory.py": {
+      "sha": "e31749433440b8fffcfc95298ca25828a516dc8a13832fc74705ccc4b944eaeb",
+      "kind": "managed"
+    },
+    ".factory/scripts/board.py": {
+      "sha": "d15c923e4b6a072c0e4009b232598f1890ccddd6a1d43aaf526de98ea2282439",
+      "kind": "managed"
+    },
+    ".github/CODEOWNERS": {
+      "sha": "676b73d0937f2b9fc2ed0f4803ffa6e1d2880db80647f9dad9216e5422e78998",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/config.yml": {
+      "sha": "1f103c6a9dd07cd13a9a6f17ace6b813f47747eb9cb7e00488cb2073caaf91bb",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/decided.md": {
+      "sha": "640aa2c7c283c62949cfa0179c5cf3a01b042e120a63a501039f7e5c33076544",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/decision.md": {
+      "sha": "929a5275f90e138eaf758ff89d785334cb3c67c9261045bd563fc6ae3b9007ab",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/follow-up.md": {
+      "sha": "28f8571499faedf85940a93206aed2cd729377328214db6017481f487b7d3e8b",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/owner-action.md": {
+      "sha": "0f8cd47ff1b2ab4f62b24afd3773867b23f561016dea41bf2cea70337ccf319e",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/verification.md": {
+      "sha": "9e419673f07d52ed4379b2165cfa688090eafb9bb579d6a36cb6e1769a185351",
+      "kind": "scaffold"
+    },
+    ".github/ISSUE_TEMPLATE/work-package.md": {
+      "sha": "b09f4af821c58b7a486d1a364222b571dc4f83eda36d54b38bf92bec3f308c9d",
+      "kind": "scaffold"
+    },
+    ".github/pull_request_template.md": {
+      "sha": "5c8248736f60ff97e1f77c0aaec830fee12d356bce517dd8fb205dc468d3789b",
+      "kind": "scaffold"
+    }
+  }
+}

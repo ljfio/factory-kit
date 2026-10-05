@@ -23,7 +23,7 @@ Skills call this instead of re-deriving the queries.
   board.py project-url        print the project board URL
 
 Settings come from .factory/config.json (repo, owner, project, areas, waves, labels), falling back to the
-git remote. Needs the gh CLI with the `project` scope. Override with FACTORY_REPO, FACTORY_PROJECT_OWNER, FACTORY_PROJECT.
+git remote. Needs the gh CLI with the `project` scope. Override with FACTORY_REPO, FACTORY_OWNER, FACTORY_PROJECT.
 """
 import argparse
 import json
@@ -55,7 +55,7 @@ def detect_repo():
 
 
 REPO = os.environ.get("FACTORY_REPO") or CFG.get("repo") or detect_repo()
-OWNER = os.environ.get("FACTORY_PROJECT_OWNER") or CFG.get("project_owner") or REPO.split("/")[0]  # owns the project
+OWNER = os.environ.get("FACTORY_OWNER") or CFG.get("owner") or REPO.split("/")[0]
 PROJECT = str(os.environ.get("FACTORY_PROJECT") or CFG.get("project") or "")
 WAVE_ORDER = CFG.get("waves", [])
 AREAS = CFG.get("areas", [])
@@ -309,8 +309,7 @@ if __name__ == "__main__":
     elif a[0] == "repo":
         print(REPO)
     elif a[0] == "project-url":
-        print(gh("project", "view", PROJECT, "--owner", OWNER, "--format", "json", "--jq", ".url")
-              if PROJECT else "(no project configured)")
+        print(f"https://github.com/users/{OWNER}/projects/{PROJECT}" if PROJECT else "(no project configured)")
     elif a[0] == "ready":
         cmd_ready()
     elif a[0] == "board":

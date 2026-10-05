@@ -9,6 +9,10 @@
   skills; anything of yours that calls the old path must change.
 - `claude.yml` ships only when `claude` is an enabled agent.
 - Files removed by `update` no longer leave empty directories.
+- The owner is chosen at install: `init --owner LOGIN`, default the user signed in to `gh` (before, it was the repo's
+  account, wrong for organisation repos). Assignee, CODEOWNERS and the CI sender check use it. `project_owner` (set
+  only when it differs; defaults to the repo's account) says who owns the project. `FACTORY_SOURCE` overrides the
+  kit source; `FACTORY_OWNER` is now `FACTORY_PROJECT_OWNER`.
 - Installers older than 0.2 can still update to this release (the kit keeps the `claude_md_block` key and layout).
 
 ## 0.1.2
